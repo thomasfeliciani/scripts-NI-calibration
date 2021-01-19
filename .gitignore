@@ -1,3 +1,10 @@
+# Data and figures folders
+/cityData/
+/other/
+/outputGraphics/
+/simOutput/
+/peregrine/other/
+
 # History files
 .Rhistory
 .Rapp.history
