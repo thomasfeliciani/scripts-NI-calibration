@@ -5,6 +5,9 @@
 /simOutput/
 /peregrine/other/
 
+# Tests and other scripts
+test.r
+
 # History files
 .Rhistory
 .Rapp.history

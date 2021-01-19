@@ -1,8 +1,18 @@
-rm (list = ls( ))
+# This script reproduces the figures for the NI calibration paper.
+
+#rm (list = ls( ))
+
+if (!dir.exists("./outputGraphics/")) dir.create("./outputGraphics/")
+if (!dir.exists("./simOutput/")) {
+  dir.create("./simOutput/")
+  stop("File 'completeDataset.RDATA' needs to placed in ./simOutput/")
+}
+
 library(gridExtra)
 library(ggplot2)
 library(reshape2)
 library(scales)
+
 
 
 # Figure 1 _____________________________________________________________________
@@ -256,8 +266,8 @@ districtViolins <- function(
 
 # Loading simulation results file:
 #load("./cityData/geodata_Rotterdam.RData")
-load("./simOutput/completeDataset.RDATA") ##
-#load("./simOutput/iniAli.RDATA")
+load("./simOutput/completeDataset.RDATA") 
+
 # This has loaded two dataframes into memory:
 #   >"r": each row is a simulation run; the columns are parameters and 
 #    district-level outcome metrics;
