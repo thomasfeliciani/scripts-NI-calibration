@@ -44,11 +44,11 @@ png(
   width = 1000, height = 500, res = 300, units = "px"
 )
 ggplot (d, aes(x = x, y = y, fill = col)) +
-  geom_point(shape = 21, size = 9, color = "#383838", stroke = 1.1) +
+  geom_point(shape = 21, size = 9, color = "#383838", stroke = 1.1, alpha=0.6) +
   facet_grid(cols = vars(panel)) +
   scale_x_continuous(expand = c(0.15, 0.15)) +
   scale_y_continuous(expand = c(0.15, 0.15)) +
-  scale_fill_manual(values = c("0" = "#f2f2f2", "1" = "#383838")) +
+  scale_fill_manual(values = c("0" = "white", "1" = "darkorange")) +#383838
   theme(
     panel.background =  element_rect(color = NA, fill = "#dedede"),
     panel.border = element_blank(),
@@ -330,7 +330,7 @@ ggplot(
   ylab("number of interactions to\nfirst extremization (log_10)") +
   xlab("outgroup exposure (s=100)") +
   geom_violin(
-    fill = "gray",
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
     draw_quantiles = c(0.5)#,
     #bw = "bcv"
   ) +
@@ -385,25 +385,28 @@ png(
 )
 
 ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
-  geom_col( # Max polarization
-    data = citySummary,
-    #aes(x = as.factor(expOutgr2), y = maxAlignment2),
-    aes(x = as.factor(expOutgr2), y = maxSDopinions),
-    fill = "#ededed"
-  ) +
+  geom_segment( # Max polarization
+    data = citySummary[order(citySummary$expOutgr2),], color = "black",
+    aes(x = 1:12 - 0.6, xend = 1:12 + 0.6,
+        y = maxSDopinions, yend = maxSDopinions)) +
+  #geom_col( # Max polarization
+  #  data = citySummary,
+  #  aes(x = as.factor(expOutgr2), y = maxSDopinions),
+  #  fill = "#ededed"
+  #) +
   geom_violin( # Initial polarization
     aes(y = iniSDopinions),
     fill = "white", color = "#ababab",
-    scale = "width", width = 0.7,
+    scale = "width", width = 0.6,
     draw_quantiles = 0.5
   ) +
   geom_violin( # Final polarization
-    fill="gray",
-    scale = "width", width = 0.7,
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width", width = 0.6,
     draw_quantiles = 0.5
   ) + 
   scale_x_discrete(labels=labs) +
-  scale_y_continuous(expand = c(0,0), limits = c(0,1)) +
+  scale_y_continuous(expand = c(0,0.02), limits = c(NA,1)) +
   ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
   ylab("attitude polarization") +
   theme(
@@ -497,12 +500,13 @@ ggplot(
   ylab("local alignment (s=100)") +
   xlab("outgroup exposure (s=100)") +
   geom_violin( # Alignment at t=0 (white)
-    aes(y = abs(iniOpAlignment2)),
+    aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.1),
     fill = "white", color = "#ababab", scale = "width", draw_quantiles = 0.5) +
-  geom_violin( # Alignment at t = 200 (gray)
-    fill = "gray",
+  geom_violin( # Alignment at t = 200 (orange)
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
     scale = "width",
-    draw_quantiles = 0.5
+    draw_quantiles = 0.5,
+    position = position_nudge(x = 0.1)
   ) +
   facet_grid(
     rri2$wijk ~ (rri2$group - 1),
@@ -536,12 +540,13 @@ ggplot(
   ylab("local alignment (s=100)") +
   xlab("outgroup exposure (s=100)") +
   geom_violin( # Alignment at t=0 (white)
-    aes(y = abs(rri$iniOpAlignment2)),
+    aes(y = abs(rri$iniOpAlignment2)), position = position_nudge(x = -0.1),
     fill = "white", color = "#ababab", scale = "width", draw_quantiles = 0.5) +
-  geom_violin( # Alignment at t = 200 (gray)
-    fill = "gray",
+  geom_violin( # Alignment at t = 200 (orange)
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
     scale = "width",
-    draw_quantiles = 0.5
+    draw_quantiles = 0.5,
+    position = position_nudge(x = 0.1)
   ) +
   facet_grid(
     rri$wijk ~ (rri$group - 1),
@@ -601,20 +606,24 @@ png(
 )
 
 ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
-  geom_col( # Max alignment
-    data = citySummary,
-    aes(x = as.factor(expOutgr2), y = maxAlignment2),
-    fill = "#ededed"#, width = 1.2
-  ) +
+  geom_segment( # Max polarization
+    data = citySummary[order(citySummary$expOutgr2),], color = "black",
+    aes(x = 1:12 - 0.6, xend = 1:12 + 0.6,
+        y = maxAlignment2, yend = maxAlignment2)) +
+  #geom_col( # Max alignment
+  #  data = citySummary,
+  #  aes(x = as.factor(expOutgr2), y = maxAlignment2),
+  #  fill = "#ededed"#, width = 1.2
+  #) +
   geom_violin( # Initial alignment
     aes(y = iniAli2),
     fill = "white", color = "#ababab",
-    scale = "width", width = 0.7,
+    scale = "width", width = 0.6,
     draw_quantiles = 0.5
   ) +
   geom_violin( # Final alignment
-    fill="gray",
-    scale = "width", width = 0.7,
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width", width = 0.6,
     draw_quantiles = 0.5
   ) +
   ylab("average local alignment (s=100)") +
@@ -702,6 +711,7 @@ png(
   width = 1300, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
+  geom_segment(aes(x = 0.5, xend = 12.5, y = 2, yend = 2), color = "black") +
   geom_violin( # alignment at t=0
   aes(y = iniIntuitiveAlignment),
   fill = "white", color = "#ababab",
@@ -709,7 +719,7 @@ ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
   draw_quantiles = 0.5
   ) +
   geom_violin( # alignment at t=200
-    fill="gray",
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
     scale = "width",
     draw_quantiles = 0.5
   ) +
@@ -752,11 +762,17 @@ ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
 dev.off()
 
 
+
+
+
+
 # Robustness ===================================================================
 #
 #
 
 # Robustness to H
+if (FALSE)  { ########
+  
 rr <- subset(
   r,
   r$initialOpinionDistribution == "groupBias" & 
@@ -1167,15 +1183,4 @@ districtViolins(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+} #######
