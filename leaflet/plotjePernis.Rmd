@@ -1,0 +1,32 @@
+---
+title: "leaflet"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+require("leaflet")
+load("cityData/geodata_Rotterdam.RData")
+```
+```{r}
+m <- leaflet() %>%
+  addTiles() %>%  # Add default OpenStreetMap map tiles
+  addMarkers(lng=4.4777325, lat=51.9244201, popup="Rotterdam") %>%
+  fitBounds(4.4, 51.8, 4.5, 52)  %>% # nice boundaries
+  addCircles(lng=cbs100_rot@coords[,1][cbs100_rot$WK_CODE=="WK059913"], lat=cbs100_rot@coords[,2][cbs100_rot$WK_CODE=="WK059913"], fillColor = c('red'))
+
+
+#after a bit of fidling I think that Pernis is "WK059913"
+
+
+m  # Print the map
+```
+
+
+
+
+
+
