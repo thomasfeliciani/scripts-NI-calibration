@@ -528,6 +528,27 @@ e <- run(
 }
 
 
+if (FALSE){
+  
+  run(
+    timeMax = 2,
+    resetWorld = TRUE,
+    seed  =  158749486,
+    initialOpinionDistribution = "groupBias",
+    calibrationMode = "Rotterdam",
+    wijk = 9,
+    H = 0.6,
+    Mechanism = "NI",
+    typeInteraction = "two-way",
+    distanceDecay = 2,
+    polSampleSize = 50,
+    frequencyExactConvergenceTest = 100,
+    printOpinionHistogram = FALSE,
+  )
+  
+}
+
+
 
 
 #a[[2]][[1]][1,]

@@ -9,7 +9,7 @@
 #     the end of the simulation run.
 rm (list = ls( )) 
 
-source("geoAbm.R")
+#source("geoAbm.R")
 load("./cityData/geodata_Rotterdam.RData")
 source("script NI&PA.R")
 source("util.R")
