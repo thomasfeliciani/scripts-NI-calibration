@@ -8727,3 +8727,353 @@ ggplot(
     strip.text.y = element_text(angle = 0, hjust=0),
     strip.background.y = element_rect(colour=NA, fill=NA)
   )
+
+
+
+#_______________________________________________________________________________
+# Checking baseline results for Pernis (why did it not reach the 
+# extreme polarization & extreme alignment like the other districts?)
+
+load("./simOutput/completeDataset.RDATA") 
+library(ggplot2)
+
+# Selecting the baseline runs from Pernis:
+rr <- subset(
+  r,
+  r$initialOpinionDistribution == "groupBias" & 
+  #r$wijk == 9 &
+    r$H == 0.6 &
+    r$distanceDecay == 2
+)
+rri <- subset(
+  ri,
+  ri$initialOpinionDistribution == "groupBias" & 
+  #r$wijk == 9 &
+    ri$H == 0.6 &
+    ri$distanceDecay == 2
+)
+
+
+rri2 <- rri[rri$wijk %in% c(9, 2, 1),]
+
+ggplot(
+  rri2,
+  aes(
+    cut(expOutgr2, breaks=(0:5 / 5)),
+    opAlignment2
+  )) +
+  #ggtitle("3rd run per district") +
+  #ggtitle("no group bias") +
+  ylab("local alignment (s=100)") +
+  xlab("outgroup exposure (s=100)") +
+  geom_violin( # Alignment at t = 200 (orange)
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width",
+    draw_quantiles = 0.5,
+    position = position_nudge(x = 0.1)
+  ) +
+  facet_grid(
+    rri2$wijk ~ (rri2$group - 1),
+    labeller = as_labeller(
+      c(districtLabels, c("0"="non-western", "-2" = "western")))) +
+  theme(
+    plot.margin=unit(c(0,0,0,0),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    #panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(color=NA,fill="gray97"),
+    axis.line = element_line(colour = "black"),
+    strip.text.y = element_text(angle = 0, hjust=0),
+    strip.background.y = element_rect(colour=NA, fill=NA)
+  )
+
+
+
+rri2 <- rri[rri$wijk == 9,]
+table(round(rri2$opinion), rri2$group)
+table(rri2$opinion > 0.999 | rri2$opinion < 0.999)
+
+
+#actual:
+sd(c(rep(1, times = 46251), rep(-1, times = 3749)))
+
+#theoretical max:
+sd(c(rep(1, times = 46000), rep(-1, times = 4000)))
+
+# Checking actual runs with positive alignment score (in countertendency)
+seednr = 15
+seedid <- unique(rri2[rri2$opAlignment2 > 0,]$seed)[seednr]
+temp <- r[r$seed == seedid,]
+load(paste0("./simOutput/peregrine/",temp$fileName))
+w <- simW[[temp$indexParameters]]
+
+table(w$opinion > 0.999 | w$opinion < 0.999)
+table(round(w$opinion), w$group)
+
+plot(w[w$group == 1,]$expOutgr2, w[w$group == 1,]$opAlignment2)
+abline(h = 0, col = "red")
+
+
+#plot(rri2$expOutgr2, rri2$opAlignment2)
+x <- rri2[rri2$group == 1 & rri2$seed == seedid,]
+plot(x$expOutgr2, x$opAlignment2)
+abline(h = 0, col = "red")
+
+x <- expand.grid(
+  x_coor = unique(rri2$x_coor),
+  y_coor = unique(rri2$y_coor)
+)
+x$g <- x$o <- x$a <- NA
+for(i in 1:nrow(x)){
+  xi <- w[w$x_coor == x$x_coor[i] & w$y_coor == x$y_coor[i],]
+  if(nrow(xi) > 0){
+    x$g[i] <- mean(xi$group)
+    x$o[i] <- mean(xi$opinion)
+    x$a[i] <- sum(xi$opAlignment2 > 0)
+  }
+}
+x <- x[!is.na(x$g),]
+x$a[x$a == 0] <- NA
+
+ggplot(data = x, aes(x = x_coor, y_coor)) +
+  geom_point(aes(fill = g), shape = 22, size = 18) +
+  geom_point(aes(color = a), shape = 16, size = 5) +
+  scale_color_gradient(low = "yellow", high = "red", na.value = NA)
+
+
+
+aa <- c()
+for (wijk in 1:12) {
+  print(paste(
+    citySummary$district[wijk],
+    round(
+      sum(worldList[[wijk]]$expOutgr2 > 0.7) / nrow(worldList[[wijk]]) * 100,
+      digits = 2
+    )
+  ))
+  aa <- c(aa, worldList[[wijk]]$expOutgr2)
+}
+
+length(aa)
+round(sum(aa > 0.7) / length(aa) * 100, digits = 2)
+
+
+
+
+###################33
+#addTiles(leaflet())
+spanH = 0.00071
+spanV = 0.00045
+#spanH = 0.00071
+library("leaflet")
+library("mapview")
+
+
+m <- leaflet() %>%
+  addTiles() %>%  # Add default OpenStreetMap map tiles
+  #addMarkers(lng=4.4777325, lat=51.9244201, popup="Rotterdam") %>%
+  addProviderTiles(providers$Stamen.TonerBackground) %>%
+  #fitBounds(4.375, 51.885, 4.4, 51.894)  %>% # nice boundaries
+  setView(
+    lng = mean(x$y_coor),
+    lat = mean(x$x_coor),
+    zoom = 16
+  ) %>%
+  addRectangles(
+    lng1 = x$y_coor - spanH, lng2 = x$y_coor + spanH,
+    lat1 = x$x_coor - spanV, lat2 = x$x_coor + spanV,
+    color = "transparent", fillColor = "darkorange", opacity = x$g#1#x$g#"transparent"
+  )
+  #addCircles(
+  #  lng = x$y_coor,
+  #  lat = x$x_coor,
+  #  fillColor = c('red'))
+m
+
+mapshot(m, file = "./outputGraphics/map.png")
+
+colorRampPalette(c("white", "darkOrange"), x$g)
+
+################
+
+
+
+
+#get_map(
+#  location=c(mean(x$x_coor), mean(x$y_coor)),
+#        source="stamen", maptype="watercolor", crop=FALSE)
+#ggmap(myMap)
+#ggmap(myMap)
+
+
+# Starting opinion of minority agents who misalign
+
+source("script NI&PA.r")
+
+run(
+  timeMax = 0,
+  resetWorld = TRUE,
+  seed  =  158749486,
+  initialOpinionDistribution = "groupBias",
+  calibrationMode = "Rotterdam",
+  wijk = 9,
+  H = 0.6,
+  Mechanism = "NI",
+  typeInteraction = "two-way",
+  distanceDecay = 2,
+  polSampleSize = 50,
+  frequencyExactConvergenceTest = 100,
+  printOpinionHistogram = FALSE,
+)
+
+a <- agents$opinion
+
+run(
+  timeMax = 200,
+  resetWorld = TRUE,
+  seed  =  158749486,
+  initialOpinionDistribution = "groupBias",
+  calibrationMode = "Rotterdam",
+  wijk = 9,
+  H = 0.6,
+  Mechanism = "NI",
+  typeInteraction = "two-way",
+  distanceDecay = 2,
+  polSampleSize = 50,
+  frequencyExactConvergenceTest = 100,
+  printOpinionHistogram = FALSE,
+)
+
+b <- agents$opinion
+hist(b)
+
+
+simdata <- data.frame(
+  iniop = a,
+  finop = b,
+  group = factor(
+    agents$group, levels = c(-1, 1),
+    labels = c("western\nmajority", "non-western\nminority")),
+  time = agents$nIntFirstExtr,
+  location = agents$location
+)
+for(i in 1:nrow(simdata)){
+  if (simdata$finop[i] <= -0.999) {simdata$finop[i] <- -1}
+  if (simdata$finop[i] >= -0.999) {simdata$finop[i] <- 1}
+}
+
+library(ggplot2)
+
+ggplot(data = simdata, aes(x = iniop, y = as.factor(finop))) +
+  geom_boxplot() + 
+  facet_wrap(~ group) +
+  xlab("initial opinion\nt=0") + ylab("final opinion\nt=200")
+
+ggplot(data = simdata, aes(x = time, y = as.factor(finop))) +
+  geom_boxplot() + 
+  facet_wrap(~ group) +
+  xlab("# interactions before first extremization") +
+  ylab("final opinion\nt=200")
+
+table(simdata$group, simdata$finop)
+
+
+
+loc <- data.frame(
+  loc = unique(simdata[simdata$group == "non-western\nminority",]$location)
+)
+for (l in 1:nrow(loc)){
+  x <- simdata[
+    simdata$group == "non-western\nminority" & simdata$location == loc$loc[l],]
+  loc$nNonWest[l] <- nrow(x)
+  loc$negativeop[l] <- sum(x$finop == -1)
+  loc$positiveop[l] <- sum(x$finop == 1)
+}
+names(loc) <- c(
+  "sq.unit ID",
+  "# non-west.",
+  "# non-misaligned",
+  "# misaligned"
+)
+write.csv(loc[loc$positiveop >= 1,], file = "./other/misaligned.csv")
+print(loc[loc$"# misaligned" >= 1,])
+
+#load("./cityData/geodata_Rotterdam.RData")
+#wijk <- 9
+#dat <- subset(cbs100_rot, cbs100_rot$WK_CODE==districtsList[wijk])
+#dat <- dat[dat$nauto2014!=0 & dat$nnwal2014!=0,]
+#dat$dens <- dat$inw2014 / citySummary$n_pop[wijk]
+#ops <- c(NA, length = length(dat))
+#for (l in 1:length(dat)){ # for every cell
+#  cell <- subset(agents, agents$location == dat$OBJECTID[l])
+#  ops[l] <- mean(cell$opinion)
+#}
+#dat$opinion <- ops
+#
+#opAlignment2 <- moranI( # opinion-group alignment
+#  x = dat$pnwal2014,
+#  y = dat$opinion,
+#  proxmat = proximityList2[[wijk]],
+#  dens = dat$dens,
+#  N = citySummary$n_pop[wijk]
+#)
+#
+#as <- base::merge(
+#  x = agents[,1:2],
+#  y = as.data.frame(cbind(
+#    dat$OBJECTID,
+#    opAlignment2 = opAlignment2$localI,
+#  )),
+#  by.x="location",
+#  by.y = "V1"
+#)
+#W$opAlignment2 <- as$opAlignment2
+
+
+
+
+ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
+  geom_segment(aes(x = 0.5, xend = 12.5, y = 2, yend = 2), color = "black") +
+  geom_violin( # alignment at t=0
+    aes(y = iniIntuitiveAlignment),
+    fill = "white", color = "#ababab",
+    scale = "width",
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # alignment at t=200
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width",
+    draw_quantiles = 0.5
+  ) +
+  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ylab("between-groups attitude difference") +
+  scale_x_discrete(labels = labs) +
+  scale_y_continuous(
+    #trans = scaleSquash(cut_from, cut_to, 50), ### squashing the y axis
+    limits = c(0,2.1),
+    expand = c(0,0)#,
+    #breaks = breaks[breaks <= cut_from | breaks >= cut_to]
+  ) +
+  #geom_rect( # Highlighting the squashed portion of the chart
+  #  aes(xmin = 0, xmax = 13, ymin = cut_from, ymax = cut_to),
+  #  fill = "#fafafa"
+  #) +
+  #geom_segment( # highlighting the squashed portion on the Y axis
+  #  aes(x = 0, xend = 0, y = 0, yend = cut_from), size = 0.5, color = "black") +
+  #geom_segment( # highlighting the squashed portion on the Y axis
+  #  aes(x = 0, xend = 0, y = cut_to, yend = 2), size = 0.5, color = "black") +
+  #annotate("text", x = 0, y = cut_from, label = "\\", angle = "300", size = 4) +
+  #annotate("text", x = 0, y = cut_to, label = "\\", angle = "300", size = 4) +
+  #coord_cartesian(clip = "off") +
+  theme(
+    plot.margin=unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line.x = element_line(colour = "black"),
+    axis.line.y = element_blank()
+  )

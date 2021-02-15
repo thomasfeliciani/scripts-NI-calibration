@@ -763,6 +763,118 @@ dev.off()
 
 
 
+# Map __________________________________________________________________________
+
+
+library(ggmap)
+library(ggsn)
+load("cityData/geodata_Rotterdam.RData")
+load("./simOutput/completeDataset.RDATA") 
+
+# Selecting the baseline runs from Pernis:
+rr <- subset(
+  r,
+  r$initialOpinionDistribution == "groupBias" & 
+    #r$wijk == 9 &
+    r$H == 0.6 &
+    r$distanceDecay == 2
+)
+rri <- subset(
+  ri,
+  ri$initialOpinionDistribution == "groupBias" & 
+    #r$wijk == 9 &
+    ri$H == 0.6 &
+    ri$distanceDecay == 2
+)
+rri2 <- rri[rri$wijk == 9,]
+
+
+# Checking actual runs with positive alignment score (in countertendency)
+seednr = 15
+seedid <- unique(rri2[rri2$opAlignment2 > 0,]$seed)[seednr]
+temp <- r[r$seed == seedid,]
+load(paste0("./simOutput/peregrine/",temp$fileName))
+w <- simW[[temp$indexParameters]]
+
+x <- expand.grid(
+  x_coor = unique(rri2$x_coor),
+  y_coor = unique(rri2$y_coor)
+)
+x$g <- x$o <- x$a <- NA
+for(i in 1:nrow(x)){
+  xi <- w[w$x_coor == x$x_coor[i] & w$y_coor == x$y_coor[i],]
+  if(nrow(xi) > 0){
+    x$g[i] <- mean(xi$group)
+    x$o[i] <- mean(xi$opinion)
+    x$a[i] <- sum(xi$opAlignment2 > 0)
+  }
+}
+x <- x[!is.na(x$g),]
+x$a[x$a == 0] <- NA
+
+# converting group size into % non-western density
+x$g <- (x$g + 1) / 2 * 100
+
+myMap <- get_stamenmap(
+  bbox = c(
+    left = min(x$y_coor),
+    bottom = min(x$x_coor),
+    right = max(x$y_coor),
+    top = max(x$x_coor)),
+  maptype = "toner-background",#"toner-background",
+  crop = FALSE, zoom = 16
+)
+
+png(
+  filename = "./outputGraphics/map.png",
+  width = 1700, height = 1100, units = "px", res = 300
+)
+
+ggmap(myMap, darken = c(0.6, "white")) + 
+  geom_point( # group density (tile / square unit)
+    data = x, shape = 15, size = 7.8, alpha = 0.5,
+    aes(x = y_coor, y = x_coor, color = g)
+  ) +
+  geom_point( # alignment (circle)
+    data = x, shape = 21, size = 4, color = "darkorange",
+    aes(x = y_coor, y = x_coor, fill = a)
+  ) +
+  ggtitle(
+    "District: Pernis")+#, subtitle = "End of a run (baseline configuration)") +
+  scalebar(
+    transform = TRUE, dist_unit = "m", dist = 100, location = "topright",
+    border.size = 0.5, st.size	= 2,
+    x.min = min(x$y_coor), x.max = max(x$y_coor) + 0.0035,
+    y.min = min(x$x_coor), y.max = max(x$x_coor) + 0.0005) +
+  scale_color_gradient2( # group
+    "% non-western", low = "white", high = "orange") + 
+  scale_fill_gradient2( # alignment
+    "misaligned\nnon-western agents", limits = c(0, max(x$a, na.rm = TRUE)),
+    low = "gray", high = "black", na.value = "white") +
+  theme(
+    panel.border = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank()
+  )
+
+dev.off() 
+# Map tiles by Stamen Design 2021
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

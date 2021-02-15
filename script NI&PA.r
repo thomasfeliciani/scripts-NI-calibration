@@ -21,7 +21,7 @@
 #rm (list = ls())
 require(ggplot2)
 source("util.R")
-source("geoAbm.R")
+#source("geoAbm.R") ##
 
 
 
