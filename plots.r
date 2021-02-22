@@ -292,6 +292,15 @@ ri$iniOpAlignment1 <- abs(ri$iniOpAlignment1)
 ri$iniOpAlignment2 <- abs(ri$iniOpAlignment2)
 ri$iniOpAlignment3 <- abs(ri$iniOpAlignment3)
 
+r$maxAlignment3 <- r$maxAlignment2 <- r$maxAlignment1 <- r$maxSDopinions <- NA
+for (w in 1:12) {
+  r[r$wijk == w, "maxSDopinions"] <- citySummary$maxSDopinions[w]
+  r[r$wijk == w, "maxAlignment1"] <- citySummary$maxAlignment1[w]
+  r[r$wijk == w, "maxAlignment2"] <- citySummary$maxAlignment2[w]
+  r[r$wijk == w, "maxAlignment3"] <- citySummary$maxAlignment3[w]
+}
+
+
 # selecting the runs from the baseline parameter configuration.
 rr <- subset(
   r,
@@ -425,7 +434,7 @@ dev.off()
 
 
 
-# Figure # _____________________________________________________________________
+# Figure 6 _____________________________________________________________________
 # Showing non-relevant runs from the baseline:
 #png(
 #  filename = "./outputGraphics/figure X - polarized runs.png",
@@ -463,9 +472,109 @@ dev.off()
 #rri <- subset(rri, rri$seed %in% rr$seed)
 
 
+# Figure 6______________________________________________________________________
+# Map
+#
+library(ggmap)
+library(ggsn)
+load("cityData/geodata_Rotterdam.RData")
+#load("./simOutput/completeDataset.RDATA") 
+
+# Selecting the baseline runs from Pernis:
+rr <- subset(
+  r,
+  r$initialOpinionDistribution == "groupBias" & 
+    #r$wijk == 9 &
+    r$H == 0.6 &
+    r$distanceDecay == 2
+)
+rri <- subset(
+  ri,
+  ri$initialOpinionDistribution == "groupBias" & 
+    #r$wijk == 9 &
+    ri$H == 0.6 &
+    ri$distanceDecay == 2
+)
+rri2 <- rri[rri$wijk == 9,]
 
 
-# Figure 6 _____________________________________________________________________
+# Checking actual runs with positive alignment score (in countertendency)
+seednr = 15
+seedid <- unique(rri2[rri2$opAlignment2 > 0,]$seed)[seednr]
+temp <- r[r$seed == seedid,]
+load(paste0("./simOutput/peregrine/",temp$fileName))
+w <- simW[[temp$indexParameters]]
+
+x <- expand.grid(
+  x_coor = unique(rri2$x_coor),
+  y_coor = unique(rri2$y_coor)
+)
+x$g <- x$o <- x$a <- NA
+for(i in 1:nrow(x)){
+  xi <- w[w$x_coor == x$x_coor[i] & w$y_coor == x$y_coor[i],]
+  if(nrow(xi) > 0){
+    x$g[i] <- mean(xi$group)
+    x$o[i] <- mean(xi$opinion)
+    x$a[i] <- sum(xi$opAlignment2 > 0)
+  }
+}
+x <- x[!is.na(x$g),]
+x$a[x$a == 0] <- NA
+
+# converting group size into % non-western density
+x$g <- (x$g + 1) / 2 * 100
+
+myMap <- get_stamenmap(
+  bbox = c(
+    left = min(x$y_coor),
+    bottom = min(x$x_coor),
+    right = max(x$y_coor),
+    top = max(x$x_coor)),
+  maptype = "toner-background",#"toner-background",
+  crop = FALSE, zoom = 16
+)
+
+png(
+  filename = "./outputGraphics/figure 6 - map.png",
+  width = 1700, height = 1100, units = "px", res = 300
+)
+
+ggmap(myMap, darken = c(0.6, "white")) + 
+  geom_point( # group density (tile / square unit)
+    data = x, shape = 15, size = 7.8, alpha = 0.5,
+    aes(x = y_coor, y = x_coor, color = g)
+  ) +
+  geom_point( # alignment (circle)
+    data = x, shape = 21, size = 4, color = "darkorange",
+    aes(x = y_coor, y = x_coor, fill = a)
+  ) +
+  ggtitle(
+    "District: Pernis")+#, subtitle = "End of a run (baseline configuration)") +
+  scalebar(
+    transform = TRUE, dist_unit = "m", dist = 100, location = "topright",
+    border.size = 0.5, st.size	= 2,
+    x.min = min(x$y_coor), x.max = max(x$y_coor) + 0.0035,
+    y.min = min(x$x_coor), y.max = max(x$x_coor) + 0.0005) +
+  scale_color_gradient2( # group
+    "% non-western", low = "white", high = "orange") + 
+  scale_fill_gradient2( # alignment
+    "misaligned\nnon-western agents", limits = c(0, max(x$a, na.rm = TRUE)),
+    low = "gray", high = "black", na.value = "white") +
+  theme(
+    panel.border = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank()
+  )
+
+dev.off() 
+# Map tiles by Stamen Design 2021
+
+
+
+
+
+# Figure 7 _____________________________________________________________________
 # Expectation 2a)
 # Agents who are more exposed to their outgroup exhibit higher scores of local
 # alignment.
@@ -486,7 +595,7 @@ rri2 <- rri[rri$wijk %in% c(1, 4, 7),]
 #)
 
 png(
-  filename = "./outputGraphics/figure 6 - expectation_2a.png",
+  filename = "./outputGraphics/figure 7 - expectation_2a.png",
   width = 1100, height = 1200, res = 300, units = "px"
 )
 ggplot(
@@ -567,13 +676,13 @@ dev.off()
 
 
 
-# Figure 7 _____________________________________________________________________
+# Figure 8 _____________________________________________________________________
 # Expectation 2b) 
 # Districts with higher levels of mean outgroup exposure exhibit higher average
 # local alignment.
 
 #png(
-#  filename = "./outputGraphics/figure 7 - expectation_2b.png",
+#  filename = "./outputGraphics/figure 8 - expectation_2b.png",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
 #print(districtViolins(
@@ -601,20 +710,15 @@ for (i in 1:length(labs_prep)){
 }
 
 png(
-  filename = "./outputGraphics/figure 7 - expectation_2b.png",
+  filename = "./outputGraphics/figure 8 - expectation_2b.png",
   width = 1300, height = 1200, res = 300, units = "px"
 )
 
 ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
-  geom_segment( # Max polarization
+  geom_segment( # Max alignment
     data = citySummary[order(citySummary$expOutgr2),], color = "black",
     aes(x = 1:12 - 0.6, xend = 1:12 + 0.6,
         y = maxAlignment2, yend = maxAlignment2)) +
-  #geom_col( # Max alignment
-  #  data = citySummary,
-  #  aes(x = as.factor(expOutgr2), y = maxAlignment2),
-  #  fill = "#ededed"#, width = 1.2
-  #) +
   geom_violin( # Initial alignment
     aes(y = iniAli2),
     fill = "white", color = "#ababab",
@@ -622,7 +726,7 @@ ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
     draw_quantiles = 0.5
   ) +
   geom_violin( # Final alignment
-    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    color = "darkorange", fill = "darkorange", alpha = 0.4,
     scale = "width", width = 0.6,
     draw_quantiles = 0.5
   ) +
@@ -645,13 +749,13 @@ dev.off()
 
 
 
-# Figure 8 _____________________________________________________________________
+# Figure 9 _____________________________________________________________________
 # Expectation 2c) 
 # There is an inverted U-shaped effect of average outgroup exposure
 # in the district and the difference between the average attitude of
 # the two groups (global level alignment).
 #png(
-#  filename = "./outputGraphics/figure 8 - expectation_2c.png",
+#  filename = "./outputGraphics/figure 9 - expectation_2c.png",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
 #districtViolins(
@@ -707,7 +811,7 @@ cut_to = 1.66
 breaks = 0:20/10
 
 png(
-  filename = "./outputGraphics/figure 8 - expectation_2c.png",
+  filename = "./outputGraphics/figure 9 - expectation_2c.png",
   width = 1300, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
@@ -763,103 +867,799 @@ dev.off()
 
 
 
-# Map __________________________________________________________________________
 
 
-library(ggmap)
-library(ggsn)
-load("cityData/geodata_Rotterdam.RData")
-load("./simOutput/completeDataset.RDATA") 
 
-# Selecting the baseline runs from Pernis:
+
+################################################################################
+##################### Robustness ###############################################
+################################################################################
+#
+#
+# Robustness to distanceDecay___________________________________________________
+
 rr <- subset(
   r,
   r$initialOpinionDistribution == "groupBias" & 
-    #r$wijk == 9 &
+    r$H == 0.6# &
+  #r$distanceDecay == 2
+)
+rri <- subset(
+  ri,
+  ri$initialOpinionDistribution == "groupBias" & 
+    ri$H == 0.6# &
+  #ri$distanceDecay == 2
+)
+
+rr$distanceDecay <- factor(
+  as.character(rr$distanceDecay),
+  levels = c("1", "2", "3"),
+  labels = c("steep", "medium", "mild")
+)
+rri$distanceDecay <- factor(
+  as.character(rri$distanceDecay),
+  levels = c("1", "2", "3"),
+  labels = c("steep", "medium", "mild")
+)
+
+labeller = c(
+  "steep" = "steep\n(s=10)",
+  "medium" = "medium\n(baseline: s=100)",
+  "mild" = "mild\n(s=1000)"
+)
+
+
+# Expectation 1a)
+# Agents who are more exposed to outgroup agents develop extreme attitudes after
+# fewer interactions.
+rri2 <- rri[!is.na(rri$timeFirstExtr),]
+#png(
+#  filename = "./outputGraphics/figure 4 - expectation_1a.png",
+#  width = 1800, height = 1400, res = 300, units = "px"
+#)
+ggplot(
+  rri2,
+  aes(
+    cut(expOutgr2, breaks=(c(0:5)/5)),
+    log10(nIntFirstExtr)
+  )) +
+  ylab("number of interactions to\nfirst extremization (log_10)") +
+  xlab("outgroup exposure (s=100)") +
+  geom_violin(
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    draw_quantiles = c(0.5)#,
+    #bw = "bcv"
+  ) +
+  facet_grid(
+    cols = vars(distanceDecay),
+    labeller = as_labeller(labeller)
+  ) +
+  theme(
+    plot.margin=unit(c(0,0,0,0),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+#dev.off()
+#rm(rri2)
+
+
+# Expectation 1b)
+# Districts with higher levels of mean outgroup exposure exhibit a higher degree
+# of polarization at any given point of time (i.e. measured as the average
+# number of interaction events per agent).
+#png(
+#  filename = "./outputGraphics/figure 5 - expectation_1b.png",
+#  width = 1300, height = 1200, res = 300, units = "px"
+#)
+ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
+  geom_violin( # Max polarization
+    aes(y = maxSDopinions),
+    color = "black", scale = "width", width = 1
+  ) +
+  geom_violin( # Initial polarization
+    aes(y = iniSDopinions),
+    fill = "white", color = "#ababab",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # Final polarization
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) + 
+  facet_grid(
+    cols = vars(distanceDecay),
+    labeller = as_labeller(labeller)
+  ) +
+  scale_x_discrete(labels=labs) +
+  scale_y_continuous(expand = c(0,0.02), limits = c(NA,1)) +
+  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ylab("attitude polarization") +
+  theme(
+    plot.margin=unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+#dev.off()
+
+
+# Expectation 2a)
+# Agents who are more exposed to their outgroup exhibit higher scores of local
+# alignment.
+#
+# First we select agents from the three representative districts. We also only
+# show western agents.
+rri2 <- rri[rri$wijk %in% c(1, 4, 7) & rri$group == -1,]
+
+#png(
+#  filename = "./outputGraphics/figure 7 - expectation_2a.png",
+#  width = 1100, height = 1200, res = 300, units = "px"
+#)
+ggplot(
+  rri2,
+  aes(
+    cut(expOutgr2, breaks=(0:5 / 5)),
+    abs(opAlignment2)
+  )) +
+  ylab("local alignment (s=100)") +
+  xlab("outgroup exposure (s=100)") +
+  geom_violin( # Alignment at t=0 (white)
+    aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.1),
+    fill = "white", color = "#ababab", scale = "width", draw_quantiles = 0.5) +
+  geom_violin( # Alignment at t = 200 (orange)
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width",
+    draw_quantiles = 0.5,
+    position = position_nudge(x = 0.1)
+  ) +
+  facet_grid(
+    rri2$wijk ~ rri2$distanceDecay,
+    labeller = as_labeller(c(districtLabels, labeller))) +
+  theme(
+    plot.margin=unit(c(0,0,0,0),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(color=NA,fill="gray97"),
+    axis.line = element_line(colour = "black"),
+    strip.text.y = element_text(angle = 0, hjust=0),
+    strip.background.y = element_rect(colour=NA, fill=NA)
+  )
+#dev.off()
+
+
+# Expectation 2b) 
+# Districts with higher levels of mean outgroup exposure exhibit higher average
+# local alignment.
+#png(
+#  filename = "./outputGraphics/figure 8 - expectation_2b.png",
+#  width = 1300, height = 1200, res = 300, units = "px"
+#)
+ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
+  geom_violin( # Max alignment
+    aes(y = maxAlignment2),
+    color = "black", scale = "width", width = 1
+  ) +
+  geom_violin( # Initial alignment
+    aes(y = iniAli2),
+    fill = "white", color = "#ababab",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # Final alignment
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) +
+  facet_wrap(
+    rr$distanceDecay,
+    labeller = as_labeller(labeller)
+  ) +
+  ylab("average local alignment (s=100)") +
+  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  scale_x_discrete(labels=labs) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme(
+    plot.margin=unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+#dev.off()
+
+
+# Expectation 2c) 
+# There is an inverted U-shaped effect of average outgroup exposure
+# in the district and the difference between the average attitude of
+# the two groups (global level alignment).
+#png(
+#  filename = "./outputGraphics/figure 9 - expectation_2c.png",
+#  width = 1300, height = 1200, res = 300, units = "px"
+#)
+ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
+  geom_segment(aes(x = 0.5, xend = 12.5, y = 2, yend = 2), color = "black") +
+  geom_violin( # alignment at t=0
+    aes(y = iniIntuitiveAlignment),
+    fill = "white", color = "#ababab",
+    scale = "width",
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # alignment at t=200
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width",
+    draw_quantiles = 0.5
+  ) +
+  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ylab("between-groups attitude difference") +
+  scale_x_discrete(labels = labs) +
+  scale_y_continuous(limits = c(0,2.1) ) +#, expand = c(0,0)) +
+  facet_wrap(
+    rr$distanceDecay,
+    labeller = as_labeller(labeller)
+  ) +
+  theme(
+    plot.margin=unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+#dev.off()
+
+
+
+
+
+
+#
+#
+# Robustness to initialOpinionDistribution______________________________________
+
+rr <- subset(
+  r,
+  #r$initialOpinionDistribution == "groupBias" & 
     r$H == 0.6 &
     r$distanceDecay == 2
 )
 rri <- subset(
   ri,
-  ri$initialOpinionDistribution == "groupBias" & 
-    #r$wijk == 9 &
+  #ri$initialOpinionDistribution == "groupBias" & 
     ri$H == 0.6 &
     ri$distanceDecay == 2
 )
-rri2 <- rri[rri$wijk == 9,]
-
-
-# Checking actual runs with positive alignment score (in countertendency)
-seednr = 15
-seedid <- unique(rri2[rri2$opAlignment2 > 0,]$seed)[seednr]
-temp <- r[r$seed == seedid,]
-load(paste0("./simOutput/peregrine/",temp$fileName))
-w <- simW[[temp$indexParameters]]
-
-x <- expand.grid(
-  x_coor = unique(rri2$x_coor),
-  y_coor = unique(rri2$y_coor)
-)
-x$g <- x$o <- x$a <- NA
-for(i in 1:nrow(x)){
-  xi <- w[w$x_coor == x$x_coor[i] & w$y_coor == x$y_coor[i],]
-  if(nrow(xi) > 0){
-    x$g[i] <- mean(xi$group)
-    x$o[i] <- mean(xi$opinion)
-    x$a[i] <- sum(xi$opAlignment2 > 0)
-  }
-}
-x <- x[!is.na(x$g),]
-x$a[x$a == 0] <- NA
-
-# converting group size into % non-western density
-x$g <- (x$g + 1) / 2 * 100
-
-myMap <- get_stamenmap(
-  bbox = c(
-    left = min(x$y_coor),
-    bottom = min(x$x_coor),
-    right = max(x$y_coor),
-    top = max(x$x_coor)),
-  maptype = "toner-background",#"toner-background",
-  crop = FALSE, zoom = 16
+l <- c("uniform", "beta", "groupBias")
+rr$initialOpinionDistribution <- 
+  factor(rr$initialOpinionDistribution, levels = l)
+rri$initialOpinionDistribution <-
+  factor(rri$initialOpinionDistribution, levels = l)
+labeller = c(
+  "uniform" = "uniform, no group bias",
+  "beta" = "bell-shaped, no group bias",
+  "groupBias" = "bell-shaped, group bias\n(baseline)"
 )
 
-png(
-  filename = "./outputGraphics/map.png",
-  width = 1700, height = 1100, units = "px", res = 300
-)
 
-ggmap(myMap, darken = c(0.6, "white")) + 
-  geom_point( # group density (tile / square unit)
-    data = x, shape = 15, size = 7.8, alpha = 0.5,
-    aes(x = y_coor, y = x_coor, color = g)
+# Expectation 1a)
+# Agents who are more exposed to outgroup agents develop extreme attitudes after
+# fewer interactions.
+rri2 <- rri[!is.na(rri$timeFirstExtr),]
+#png(
+#  filename = "./outputGraphics/figure 4 - expectation_1a.png",
+#  width = 1800, height = 1400, res = 300, units = "px"
+#)
+ggplot(
+  rri2,
+  aes(
+    cut(expOutgr2, breaks=(c(0:5)/5)),
+    log10(nIntFirstExtr)
+  )) +
+  ylab("number of interactions to\nfirst extremization (log_10)") +
+  xlab("outgroup exposure (s=100)") +
+  geom_violin(
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    draw_quantiles = c(0.5)#,
+    #bw = "bcv"
   ) +
-  geom_point( # alignment (circle)
-    data = x, shape = 21, size = 4, color = "darkorange",
-    aes(x = y_coor, y = x_coor, fill = a)
+  facet_grid(
+    cols = vars(initialOpinionDistribution),
+    labeller = as_labeller(labeller)
   ) +
-  ggtitle(
-    "District: Pernis")+#, subtitle = "End of a run (baseline configuration)") +
-  scalebar(
-    transform = TRUE, dist_unit = "m", dist = 100, location = "topright",
-    border.size = 0.5, st.size	= 2,
-    x.min = min(x$y_coor), x.max = max(x$y_coor) + 0.0035,
-    y.min = min(x$x_coor), y.max = max(x$x_coor) + 0.0005) +
-  scale_color_gradient2( # group
-    "% non-western", low = "white", high = "orange") + 
-  scale_fill_gradient2( # alignment
-    "misaligned\nnon-western agents", limits = c(0, max(x$a, na.rm = TRUE)),
-    low = "gray", high = "black", na.value = "white") +
   theme(
-    panel.border = element_blank(),
-    axis.title = element_blank(),
-    axis.ticks = element_blank(),
-    axis.text = element_blank()
+    plot.margin=unit(c(0,0,0,0),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
   )
+#dev.off()
+#rm(rri2)
 
-dev.off() 
-# Map tiles by Stamen Design 2021
+
+# Expectation 1b)
+# Districts with higher levels of mean outgroup exposure exhibit a higher degree
+# of polarization at any given point of time (i.e. measured as the average
+# number of interaction events per agent).
+#png(
+#  filename = "./outputGraphics/figure 5 - expectation_1b.png",
+#  width = 1300, height = 1200, res = 300, units = "px"
+#)
+ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
+  geom_violin( # Max polarization
+    aes(y = maxSDopinions),
+    color = "black", scale = "width", width = 1
+  ) +
+  geom_violin( # Initial polarization
+    aes(y = iniSDopinions),
+    fill = "white", color = "#ababab",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # Final polarization
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) + 
+  facet_grid(
+    cols = vars(initialOpinionDistribution),
+    labeller = as_labeller(labeller)
+  ) +
+  scale_x_discrete(labels=labs) +
+  scale_y_continuous(expand = c(0,0.02), limits = c(NA,1)) +
+  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ylab("attitude polarization") +
+  theme(
+    plot.margin=unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+#dev.off()
+
+
+# Expectation 2a)
+# Agents who are more exposed to their outgroup exhibit higher scores of local
+# alignment.
+#
+# First we select agents from the three representative districts. We also only
+# show western agents.
+rri2 <- rri[rri$wijk %in% c(1, 4, 7) & rri$group == -1,]
+
+#png(
+#  filename = "./outputGraphics/figure 7 - expectation_2a.png",
+#  width = 1100, height = 1200, res = 300, units = "px"
+#)
+ggplot(
+  rri2,
+  aes(
+    cut(expOutgr2, breaks=(0:5 / 5)),
+    abs(opAlignment2)
+  )) +
+  ylab("local alignment (s=100)") +
+  xlab("outgroup exposure (s=100)") +
+  geom_violin( # Alignment at t=0 (white)
+    aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.1),
+    fill = "white", color = "#ababab", scale = "width", draw_quantiles = 0.5) +
+  geom_violin( # Alignment at t = 200 (orange)
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width",
+    draw_quantiles = 0.5,
+    position = position_nudge(x = 0.1)
+  ) +
+  facet_grid(
+    rri2$wijk ~ rri2$initialOpinionDistribution,
+    labeller = as_labeller(
+      c(districtLabels, labeller))) +
+  theme(
+    plot.margin=unit(c(0,0,0,0),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(color=NA,fill="gray97"),
+    axis.line = element_line(colour = "black"),
+    strip.text.y = element_text(angle = 0, hjust=0),
+    strip.background.y = element_rect(colour=NA, fill=NA)
+  )
+#dev.off()
+
+
+# Expectation 2b) 
+# Districts with higher levels of mean outgroup exposure exhibit higher average
+# local alignment.
+#png(
+#  filename = "./outputGraphics/figure 8 - expectation_2b.png",
+#  width = 1300, height = 1200, res = 300, units = "px"
+#)
+ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
+  geom_violin( # Max alignment
+    aes(y = maxAlignment2),
+    color = "black", scale = "width", width = 1
+  ) +
+  geom_violin( # Initial alignment
+    aes(y = iniAli2),
+    fill = "white", color = "#ababab",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # Final alignment
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) +
+  facet_wrap(
+    rr$initialOpinionDistribution,
+    labeller = as_labeller(labeller)
+  ) +
+  ylab("average local alignment (s=100)") +
+  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  scale_x_discrete(labels=labs) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme(
+    plot.margin=unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+#dev.off()
+
+
+# Expectation 2c) 
+# There is an inverted U-shaped effect of average outgroup exposure
+# in the district and the difference between the average attitude of
+# the two groups (global level alignment).
+#png(
+#  filename = "./outputGraphics/figure 9 - expectation_2c.png",
+#  width = 1300, height = 1200, res = 300, units = "px"
+#)
+ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
+  geom_segment(aes(x = 0.5, xend = 12.5, y = 2, yend = 2), color = "black") +
+  geom_violin( # alignment at t=0
+    aes(y = iniIntuitiveAlignment),
+    fill = "white", color = "#ababab",
+    scale = "width",
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # alignment at t=200
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width",
+    draw_quantiles = 0.5
+  ) +
+  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ylab("between-groups attitude difference") +
+  scale_x_discrete(labels = labs) +
+  scale_y_continuous(limits = c(0,2.1) ) +#, expand = c(0,0)) +
+  facet_wrap(
+    rr$initialOpinionDistribution,
+    labeller = as_labeller(labeller)
+  ) +
+  theme(
+    plot.margin=unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+#dev.off()
+
+
+
+
+
+
+
+#
+#
+# Robustness to H_______________________________________________________________
+
+rr <- subset(
+  r,
+  r$initialOpinionDistribution == "groupBias" & 
+    #r$H == 0.6 &
+    r$distanceDecay == 2
+)
+rri <- subset(
+  ri,
+  ri$initialOpinionDistribution == "groupBias" & 
+    #ri$H == 0.6 &
+    ri$distanceDecay == 2
+)
+labeller = c("0.6"="H = 0.6\n(baseline)", "0.9" = "H = 0.9")
+
+
+# Expectation 1a)
+# Agents who are more exposed to outgroup agents develop extreme attitudes after
+# fewer interactions.
+rri2 <- rri[!is.na(rri$timeFirstExtr),]
+#png(
+#  filename = "./outputGraphics/figure 4 - expectation_1a.png",
+#  width = 1800, height = 1400, res = 300, units = "px"
+#)
+ggplot(
+  rri2,
+  aes(
+    cut(expOutgr2, breaks=(c(0:5)/5)),
+    log10(nIntFirstExtr)
+  )) +
+  ylab("number of interactions to\nfirst extremization (log_10)") +
+  xlab("outgroup exposure (s=100)") +
+  geom_violin(
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    draw_quantiles = c(0.5)#,
+    #bw = "bcv"
+  ) +
+  facet_wrap(
+    rri2$H,
+    labeller = as_labeller(labeller)) +
+  theme(
+    plot.margin=unit(c(0,0,0,0),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+#dev.off()
+#rm(rri2)
+
+
+# Expectation 1b)
+# Districts with higher levels of mean outgroup exposure exhibit a higher degree
+# of polarization at any given point of time (i.e. measured as the average
+# number of interaction events per agent).
+#png(
+#  filename = "./outputGraphics/figure 5 - expectation_1b.png",
+#  width = 1300, height = 1200, res = 300, units = "px"
+#)
+ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
+  geom_violin( # Max polarization
+    aes(y = maxSDopinions),
+    color = "black", scale = "width", width = 1
+  ) +
+  geom_violin( # Initial polarization
+    aes(y = iniSDopinions),
+    fill = "white", color = "#ababab",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # Final polarization
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) + 
+  #facet_grid(cols = vars(H)) +
+  facet_wrap(
+    rr$H,
+    labeller = as_labeller(labeller)
+  ) +
+  scale_x_discrete(labels=labs) +
+  scale_y_continuous(expand = c(0,0.02), limits = c(NA,1)) +
+  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ylab("attitude polarization") +
+  theme(
+    plot.margin=unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+#dev.off()
+
+
+# Expectation 2a)
+# Agents who are more exposed to their outgroup exhibit higher scores of local
+# alignment.
+#
+# First we select agents from the three representative districts. We also only
+# show western agents.
+rri2 <- rri[rri$wijk %in% c(1, 4, 7) & rri$group == -1,]
+
+#png(
+#  filename = "./outputGraphics/figure 7 - expectation_2a.png",
+#  width = 1100, height = 1200, res = 300, units = "px"
+#)
+ggplot(
+  rri2,
+  aes(
+    cut(expOutgr2, breaks=(0:5 / 5)),
+    abs(opAlignment2)
+  )) +
+  ylab("local alignment (s=100)") +
+  xlab("outgroup exposure (s=100)") +
+  geom_violin( # Alignment at t=0 (white)
+    aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.1),
+    fill = "white", color = "#ababab", scale = "width", draw_quantiles = 0.5) +
+  geom_violin( # Alignment at t = 200 (orange)
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width",
+    draw_quantiles = 0.5,
+    position = position_nudge(x = 0.1)
+  ) +
+  facet_grid(
+    rri2$wijk ~ rri2$H,
+    labeller = as_labeller(
+      c(districtLabels, labeller))) +
+  theme(
+    plot.margin=unit(c(0,0,0,0),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(color=NA,fill="gray97"),
+    axis.line = element_line(colour = "black"),
+    strip.text.y = element_text(angle = 0, hjust=0),
+    strip.background.y = element_rect(colour=NA, fill=NA)
+  )
+#dev.off()
+
+
+# Expectation 2b) 
+# Districts with higher levels of mean outgroup exposure exhibit higher average
+# local alignment.
+#png(
+#  filename = "./outputGraphics/figure 8 - expectation_2b.png",
+#  width = 1300, height = 1200, res = 300, units = "px"
+#)
+ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
+  geom_violin( # Max alignment
+    aes(y = maxAlignment2),
+    color = "black", scale = "width", width = 1
+  ) +
+  geom_violin( # Initial alignment
+    aes(y = iniAli2),
+    fill = "white", color = "#ababab",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # Final alignment
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) +
+  facet_wrap(
+    rr$H,
+    labeller = as_labeller(labeller)
+  ) +
+  ylab("average local alignment (s=100)") +
+  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  scale_x_discrete(labels=labs) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme(
+    plot.margin=unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+#dev.off()
+
+
+# Expectation 2c) 
+# There is an inverted U-shaped effect of average outgroup exposure
+# in the district and the difference between the average attitude of
+# the two groups (global level alignment).
+#png(
+#  filename = "./outputGraphics/figure 9 - expectation_2c.png",
+#  width = 1300, height = 1200, res = 300, units = "px"
+#)
+ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
+  geom_segment(aes(x = 0.5, xend = 12.5, y = 2, yend = 2), color = "black") +
+  geom_violin( # alignment at t=0
+    aes(y = iniIntuitiveAlignment),
+    fill = "white", color = "#ababab",
+    scale = "width",
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # alignment at t=200
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width",
+    draw_quantiles = 0.5
+  ) +
+  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ylab("between-groups attitude difference") +
+  scale_x_discrete(labels = labs) +
+  scale_y_continuous(limits = c(0,2.1) ) +#, expand = c(0,0)) +
+  facet_wrap(
+    rr$H,
+    labeller = as_labeller(labeller)
+  ) +
+  theme(
+    plot.margin=unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+#dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

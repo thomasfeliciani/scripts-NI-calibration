@@ -9077,3 +9077,14 @@ ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
     axis.line.x = element_line(colour = "black"),
     axis.line.y = element_blank()
   )
+
+
+
+##
+
+#x <- ri[ri$seed == 158749486,]
+#load (paste0("./simOutput/peregrine/", r[r$seed == 158749486,]$fileName))
+#x <- simW[[9]]
+
+
+
