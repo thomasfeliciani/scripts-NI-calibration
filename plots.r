@@ -986,6 +986,10 @@ ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
 # show western agents.
 rri2 <- rri[rri$wijk %in% c(1, 4, 7) & rri$group == -1,]
 
+# We filter out all agents from non-sufficiently-polarized runs:
+rr2 <- rr[rr$SDopinions > 0.3,] #polarized runs
+rri2 <- rri2[rri2$seed %in% rr2$seed,]#agents from polarized runs 
+
 #png(
 #  filename = "./outputGraphics/figure 7 - expectation_2a.png",
 #  width = 1100, height = 1200, res = 300, units = "px"
@@ -1233,6 +1237,12 @@ ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
 # show western agents.
 rri2 <- rri[rri$wijk %in% c(1, 4, 7) & rri$group == -1,]
 
+# We filter out all agents from non-sufficiently-polarized runs:
+rr2 <- rr[rr$SDopinions > 0.3,] #polarized runs
+rri2 <- rri2[rri2$seed %in% rr2$seed,]#agents from polarized runs 
+
+
+
 #png(
 #  filename = "./outputGraphics/figure 7 - expectation_2a.png",
 #  width = 1100, height = 1200, res = 300, units = "px"
@@ -1279,7 +1289,7 @@ ggplot(
 #  filename = "./outputGraphics/figure 8 - expectation_2b.png",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
-ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
+ggplot(rr2, aes(factor(expOutgr2), opAlignment2)) +
   geom_violin( # Max alignment
     aes(y = maxAlignment2),
     color = "black", scale = "width", width = 1
@@ -1296,7 +1306,7 @@ ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
     draw_quantiles = 0.5
   ) +
   facet_wrap(
-    rr$initialOpinionDistribution,
+    rr2$initialOpinionDistribution,
     labeller = as_labeller(labeller)
   ) +
   ylab("average local alignment (s=100)") +
@@ -1386,6 +1396,7 @@ labeller = c("0.6"="H = 0.6\n(baseline)", "0.9" = "H = 0.9")
 # Agents who are more exposed to outgroup agents develop extreme attitudes after
 # fewer interactions.
 rri2 <- rri[!is.na(rri$timeFirstExtr),]
+
 #png(
 #  filename = "./outputGraphics/figure 4 - expectation_1a.png",
 #  width = 1800, height = 1400, res = 300, units = "px"
@@ -1465,6 +1476,15 @@ ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
 #dev.off()
 
 
+# Checking how many polarized runs we have for level of H:
+table(rr$H, rr$SDopinions > 0.3)
+# It seems that all runs with H=0.6 became polarized, and all runs with H=0.9
+# did not. Thus, alignment scores for H=0.9 is quite irrelevant, and the
+# comparison between H=0.6 and H=0.9 is not needed.
+# Here it is anyway:
+
+
+
 # Expectation 2a)
 # Agents who are more exposed to their outgroup exhibit higher scores of local
 # alignment.
@@ -1472,6 +1492,10 @@ ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
 # First we select agents from the three representative districts. We also only
 # show western agents.
 rri2 <- rri[rri$wijk %in% c(1, 4, 7) & rri$group == -1,]
+
+# Here we can filter out all agents from non-sufficiently-polarized runs:
+#rr2 <- rr[rr$SDopinions > 0.3,] #polarized runs
+#rri2 <- rri2[rri2$seed %in% rr2$seed,]#agents from polarized runs 
 
 #png(
 #  filename = "./outputGraphics/figure 7 - expectation_2a.png",
