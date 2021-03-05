@@ -9086,5 +9086,198 @@ ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
 #load (paste0("./simOutput/peregrine/", r[r$seed == 158749486,]$fileName))
 #x <- simW[[9]]
 
+# Checking misalignment under different distance-decay functions.
+rri <- subset(
+  ri,
+  ri$initialOpinionDistribution == "groupBias" & 
+    ri$H == 0.6# &
+  #ri$distanceDecay == 2
+)
+rri$distanceDecay <- factor(
+  as.character(rri$distanceDecay),
+  levels = c("1", "2", "3"),
+  labels = c("steep", "medium", "mild")
+)
+x <- rri[rri$group == -1,]
+hist(x$opinion)
+table(x$distanceDecay, round(x$opinion))
 
 
+
+
+# For different initial opinion distributions:
+rr <- subset(
+  r,
+  #r$initialOpinionDistribution == "groupBias" & 
+  r$H == 0.6 &
+    r$distanceDecay == 2
+)
+rri <- subset(
+  ri,
+  #ri$initialOpinionDistribution == "groupBias" & 
+  ri$H == 0.6 &
+    ri$distanceDecay == 2
+)
+hist(rri$opinion)
+table(rri$initialOpinionDistribution, round(rri$opinion))
+ggplot(rri, aes(x = initialOpinionDistribution, y = opinion)) +
+  geom_violin() + facet_grid(cols = vars(group))
+
+x <- rri[rri$group == 1,]
+x <- rri[rri$group == -1,]
+hist(x$opinion)
+table(x$initialOpinionDistribution, round(x$opinion))
+table(x$initialOpinionDistribution, x$opAlignment2 < 0)
+
+
+
+
+
+##______________________________________________________________________________
+
+# Samples vs whole populations
+#
+source("util.r")
+library(ggplot2)
+
+rri2 <- rri[!is.na(rri$timeFirstExtr),]
+ggplot(
+  rri2,
+  aes(
+    cut(expOutgr2, breaks=(c(0:5)/5)),
+    log10(nIntFirstExtr)
+  )) +
+  ylab("number of interactions to\nfirst extremization (log_10)") +
+  xlab("outgroup exposure (s=100)") +
+  geom_violin(
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    draw_quantiles = c(0.5)#,
+    #bw = "bcv"
+  ) +
+  facet_wrap(rri2$wijk, labeller = as_labeller(districtLabels)) +
+  theme(
+    plot.margin=unit(c(0,0,0,0),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+
+
+
+
+## Pulling whole populations for Overschie & Feijenoord (districts 3 and 7)
+wijk = 7 #3
+rr2 <- rr[rr$wijk == wijk,]
+
+
+for (s in 1:100){ # taking the baseline runs from the raw sim output files.
+  print(s)
+  load(paste0("./simOutput/peregrine/", rr2$fileName[s]))
+  x <- simW[[rr2$indexParameters[s]]] # This is the whole agentset from one run
+  
+  # now we pull the cell/square-unit data for this same district so that we
+  # can calculate the local alignment scores anew.
+  dat <- subset(cbs100_rot, cbs100_rot$WK_CODE==districtsList[wijk])
+  dat <- dat[dat$nauto2014!=0 & dat$nnwal2014!=0,]
+  dat$dens <- dat$inw2014 / citySummary$n_pop[wijk]
+  ops <- c(NA, length = length(dat))
+  for (l in 1:length(dat)){ # for every cell
+    cell <- subset(x, x$location == dat$OBJECTID[l])
+    ops[l] <- mean(cell$opinion)
+  }
+  dat$opinion <- ops
+  
+  opAlignment2 <- moranI( # re-calculating opinion-group alignment
+    x = dat$pnwal2014,
+    y = dat$opinion,
+    proxmat = proximityList2[[wijk]],
+    dens = dat$dens,
+    N = citySummary$n_pop[wijk]
+  )
+  x$opAlignment2 <- base::merge( # updating local scores in the agentset
+    x=x[,1:2],
+    y=as.data.frame(cbind(
+      dat$OBJECTID,
+      opAlignment2 = opAlignment2$localI
+    )),
+    by.x="location",
+    by.y = "V1"
+  )$opAlignment2
+  
+  # And now we append whole-agentset data from each run into one big dataframe:
+  x$panel <- "whole-pop"
+  ifelse(
+    s == 1,
+    wholepop <- x,
+    wholepop <- rbind(wholepop, x)
+  )
+}
+
+# We we combine it with the whole sampled agentset:
+sampledpop <- subset(
+  ri,
+  ri$initialOpinionDistribution == "groupBias" & ri$H == 0.6 &
+    ri$distanceDecay == 2 & ri$wijk == wijk
+)
+sampledpop <- sampledpop[sampledpop$wijk == wijk,]
+sampledpop$panel <- "sampled-pop"
+
+x <- rbind(
+  wholepop[,c("location", "index", "panel", "group", "opinion", "expOutgr2", "nIntFirstExtr", "timeFirstExtr", "opAlignment2")],
+  sampledpop[,c("location", "index", "panel", "group", "opinion", "expOutgr2", "nIntFirstExtr", "timeFirstExtr", "opAlignment2")]
+)
+
+
+ggplot(
+  x[!is.na(x$timeFirstExtr),],
+  aes(
+    x = cut(expOutgr2, breaks=(c(0:5)/5)),
+    y = log10(nIntFirstExtr),
+    fill = panel
+  )) +
+  ylab("number of interactions to\nfirst extremization (log_10)") +
+  xlab("outgroup exposure (s=100)") +
+  ggtitle(paste("district:", citySummary$district[wijk])) +
+  geom_violin(
+    #color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    alpha = 0.4,#fill="gray",
+    draw_quantiles = c(0.5)#,
+    #bw = "bcv"
+  ) +
+  theme(legend.title = element_blank())
+
+
+ggplot(
+  x,
+  aes(
+    x = cut(expOutgr2, breaks = (0:5 / 5)),
+    y = abs(opAlignment2),
+    fill = panel
+  )) +
+  ylab("local alignment (s=100)") +
+  xlab("outgroup exposure (s=100)") +
+  ggtitle(paste("district:", citySummary$district[wijk])) +
+  geom_violin( # Alignment at t = 200
+    alpha = 0.4,
+    scale = "width",
+    draw_quantiles = 0.5#,
+    #position = position_nudge(x = 0.1)
+  ) +
+  facet_wrap(x$group - 1, ncol = 2,labeller = as_labeller(
+    c(districtLabels, c("0"="non-western", "-2" = "western")))) +
+  theme(legend.title = element_blank())
+
+
+
+
+# Filtering out non-polarized runs. Where to set the threshold?
+hist(r$SDopinions)
+abline(v = 0.3, col = "red")
+
+# sd with a uniform distribution:
+sd(rbeta(n = 100000, 1, 1) * 2 - 1)
+# and with a bell-shaped one:
+sd(rbeta(n = 100000, 3, 3) * 2 - 1)

@@ -481,20 +481,6 @@ load("cityData/geodata_Rotterdam.RData")
 #load("./simOutput/completeDataset.RDATA") 
 
 # Selecting the baseline runs from Pernis:
-rr <- subset(
-  r,
-  r$initialOpinionDistribution == "groupBias" & 
-    #r$wijk == 9 &
-    r$H == 0.6 &
-    r$distanceDecay == 2
-)
-rri <- subset(
-  ri,
-  ri$initialOpinionDistribution == "groupBias" & 
-    #r$wijk == 9 &
-    ri$H == 0.6 &
-    ri$distanceDecay == 2
-)
 rri2 <- rri[rri$wijk == 9,]
 
 
@@ -515,7 +501,7 @@ for(i in 1:nrow(x)){
   if(nrow(xi) > 0){
     x$g[i] <- mean(xi$group)
     x$o[i] <- mean(xi$opinion)
-    x$a[i] <- sum(xi$opAlignment2 > 0)
+    x$a[i] <- sum(xi$opAlignment2 > 0 & xi$group == 1)
   }
 }
 x <- x[!is.na(x$g),]
@@ -536,7 +522,7 @@ myMap <- get_stamenmap(
 
 png(
   filename = "./outputGraphics/figure 6 - map.png",
-  width = 1700, height = 1100, units = "px", res = 300
+  width = 1700, height = 1150, units = "px", res = 300
 )
 
 ggmap(myMap, darken = c(0.6, "white")) + 
@@ -549,7 +535,7 @@ ggmap(myMap, darken = c(0.6, "white")) +
     aes(x = y_coor, y = x_coor, fill = a)
   ) +
   ggtitle(
-    "District: Pernis")+#, subtitle = "End of a run (baseline configuration)") +
+    "District: Pernis", subtitle = "End of a run (baseline configuration)") +
   scalebar(
     transform = TRUE, dist_unit = "m", dist = 100, location = "topright",
     border.size = 0.5, st.size	= 2,
@@ -1255,12 +1241,12 @@ ggplot(
   rri2,
   aes(
     cut(expOutgr2, breaks=(0:5 / 5)),
-    abs(opAlignment2)
+    opAlignment2 ########## not absolute scores
   )) +
   ylab("local alignment (s=100)") +
   xlab("outgroup exposure (s=100)") +
   geom_violin( # Alignment at t=0 (white)
-    aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.1),
+    aes(y = iniOpAlignment2), position = position_nudge(x = -0.1), # absolute?
     fill = "white", color = "#ababab", scale = "width", draw_quantiles = 0.5) +
   geom_violin( # Alignment at t = 200 (orange)
     color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
