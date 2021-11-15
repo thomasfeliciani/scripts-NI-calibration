@@ -9281,3 +9281,4 @@ abline(v = 0.3, col = "red")
 sd(rbeta(n = 100000, 1, 1) * 2 - 1)
 # and with a bell-shaped one:
 sd(rbeta(n = 100000, 3, 3) * 2 - 1)
+

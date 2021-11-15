@@ -1,9 +1,12 @@
 # Data and figures folders
-/cityData/
 /other/
+/cityData/2014-cbs-vierkant-100m/
+/cityData/shape 2014 versie 30/
+/cityData/originalData/
+/cityData/*.RData
+/battery/other/
 /outputGraphics/
 /simOutput/
-/peregrine/other/
 /test/
 
 # Tests and other scripts
