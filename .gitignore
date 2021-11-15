@@ -4,6 +4,7 @@
 /outputGraphics/
 /simOutput/
 /peregrine/other/
+/test/
 
 # Tests and other scripts
 test.r

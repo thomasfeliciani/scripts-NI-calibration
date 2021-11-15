@@ -1,17 +1,71 @@
 # This script reproduces the figures for the NI calibration paper.
 
-#rm (list = ls( ))
-
-if (!dir.exists("./outputGraphics/")) dir.create("./outputGraphics/")
-if (!dir.exists("./simOutput/")) {
-  dir.create("./simOutput/")
-  stop("File 'completeDataset.RDATA' needs to placed in ./simOutput/")
-}
-
+#rm (list = ls())
 library(gridExtra)
 library(ggplot2)
 library(reshape2)
 library(scales)
+
+
+# The next block of code ensures that the data directories exist, and creates
+# them if they don't.
+# Then it ensures that all data are present (simulation results and district
+# information); offers to download them if they are not.
+#
+# This is where all plots will be saved
+if (!dir.exists("./outputGraphics/")) dir.create("./outputGraphics/")
+
+resultsURL <- "https://1drv.ms/u/s!AhmgAwgcjlrQicglflFBXgxjSEnslQ?e=sMQRUh"
+
+if (!file.exists("./simOutput/completeDataset.RDATA")) {
+  if (!dir.exists("./simOutput/")) dir.create("./simOutput/")
+  
+  download_ <- askYesNo(paste(
+    "Results file not found. Do you wish to download it?\n",
+    "By clicking 'yes', you will be directed to the download page.\n"
+  ))
+  
+  if (!download_ | is.na(download_)){
+    cat(
+      "Results file is missing. You can download it from:",
+      resultsURL,
+      "Or you can contact Thomas Feliciani at",
+      paste0(
+        c("cian","ail.","i@", "gm","com","tho","feli","mas.")
+        [c(6,8,7,1,3,4,2,5)],
+        collapse = ''), "",
+      sep = "\n"
+    )
+    stop("")
+  }
+  
+  if (download_) {
+    cat(
+      "Please download the results file 'completeDataset.RDATA'",
+      "and place it into the folder './simOutput/'.",
+      "Then try to run this script again.",
+      "", sep = "\n"
+    )
+    browseURL(resultsURL)
+    stop("The results file is missing.")
+  }
+  rm(download_)
+} 
+rm(resultsURL)
+
+
+# Loading simulation results (also containing district data):
+load("./simOutput/completeDataset.RDATA")
+# This has loaded two dataframes into memory:
+#   - "r": each row is a simulation run; the columns are parameters and 
+#        district-level outcome metrics;
+#   - "ri": each row is an agent; the columns are parameters and agent-level
+#        metrics.
+# The key merging these two dataframes is the variable "seed", the unique ID of
+# each simulation run.
+
+
+
 
 
 
@@ -196,7 +250,7 @@ ggplot(data = d) +
 dev.off()
 
 
-#_______________________________________________________________________________
+
 ################################################################################
 #################### Plotting simulation results ###############################
 ################################################################################
@@ -219,7 +273,7 @@ districtLabels <- c(
 
 # A function to plot violin plots:
 districtViolins <- function(
-  data=rr, depVar, indepVar, depVar2=NULL, depVarLabel, indepVarLabel
+  data = rr, depVar, indepVar, depVar2 = NULL, depVarLabel, indepVarLabel
 ){
   labs_prep <- citySummary[order(citySummary[,indepVar]),]$district
   labs <- c()
@@ -234,7 +288,7 @@ districtViolins <- function(
       ")"
     )
   }
-  p <- ggplot(data, aes(factor(data[,indepVar]), data[,depVar]))+
+  p <- ggplot(data, aes(factor(data[,indepVar]), data[,depVar])) +
     ylab(depVarLabel)
   if(!is.null(depVar2)){p <- p + geom_violin(
     aes(y = data[,depVar2]),
@@ -264,33 +318,31 @@ districtViolins <- function(
   return(p)
 }
 
-# Loading simulation results file:
-#load("./cityData/geodata_Rotterdam.RData")
-load("./simOutput/completeDataset.RDATA") 
-
-# This has loaded two dataframes into memory:
-#   >"r": each row is a simulation run; the columns are parameters and 
-#    district-level outcome metrics;
-#   >"ri": each row is an agent; the columns are parameters and agent-level
-#    metrics.
-# The key of these two dataset is the variable "seed", the unique ID of each
-# simulation run.
 
 
-# recoding variables.
+
+
+#_______________________________________________________________________________
+# Next we plot the actual simulation result that we have loaded with
+# "completeDataset,RData".
+#
+#
+# Recoding the variables we need:
 r$opAlignment1 <- abs(r$opAlignment1)
 r$opAlignment2 <- abs(r$opAlignment2)
 r$opAlignment3 <- abs(r$opAlignment3)
 r$iniAli1 <- abs(r$iniAli1)
 r$iniAli2 <- abs(r$iniAli2)
 r$iniAli3 <- abs(r$iniAli3)
-
 ri$opAlignment1 <- abs(ri$opAlignment1)
 ri$opAlignment2 <- abs(ri$opAlignment2)
 ri$opAlignment3 <- abs(ri$opAlignment3)
 ri$iniOpAlignment1 <- abs(ri$iniOpAlignment1)
 ri$iniOpAlignment2 <- abs(ri$iniOpAlignment2)
 ri$iniOpAlignment3 <- abs(ri$iniOpAlignment3)
+ri$maxOpAlignment1 <- abs(ri$maxOpAlignment1)
+ri$maxOpAlignment2 <- abs(ri$maxOpAlignment2)
+ri$maxOpAlignment3 <- abs(ri$maxOpAlignment3)
 
 r$maxAlignment3 <- r$maxAlignment2 <- r$maxAlignment1 <- r$maxSDopinions <- NA
 for (w in 1:12) {
@@ -302,13 +354,13 @@ for (w in 1:12) {
 
 
 # selecting the runs from the baseline parameter configuration.
-rr <- subset(
+rr <- subset( # District-level information
   r,
   r$initialOpinionDistribution == "groupBias" & 
     r$H == 0.6 &
     r$distanceDecay == 2
 )
-rri <- subset(
+rri <- subset( # Agent-level information
   ri,
   ri$initialOpinionDistribution == "groupBias" & 
     ri$H == 0.6 &
@@ -582,7 +634,7 @@ rri2 <- rri[rri$wijk %in% c(1, 4, 7),]
 
 png(
   filename = "./outputGraphics/figure 7 - expectation_2a.png",
-  width = 1100, height = 1200, res = 300, units = "px"
+  width = 1200, height = 1200, res = 300, units = "px"
 )
 ggplot(
   rri2,
@@ -595,13 +647,22 @@ ggplot(
   ylab("local alignment (s=100)") +
   xlab("outgroup exposure (s=100)") +
   geom_violin( # Alignment at t=0 (white)
-    aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.1),
-    fill = "white", color = "#ababab", scale = "width", draw_quantiles = 0.5) +
+    aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.2),
+    fill = "white", color = "#ababab",
+    scale = "width", width = 0.4,
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # Max alignment (black)
+    aes(y = abs(maxOpAlignment2)), position = position_nudge(x = 0.2),
+    color = "black", fill = "black", alpha = 0.3,#fill="gray",
+    scale = "width", width = 0.4,
+    draw_quantiles = 0.5
+  ) +
   geom_violin( # Alignment at t = 200 (orange)
-    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
-    scale = "width",
-    draw_quantiles = 0.5,
-    position = position_nudge(x = 0.1)
+    color = "darkorange", fill = "darkorange", alpha = 0.8,#fill="gray",
+    scale = "width", width = 0.4,
+    draw_quantiles = 0.5#,
+    #position = position_nudge(x = 0.1)
   ) +
   facet_grid(
     rri2$wijk ~ (rri2$group - 1),
@@ -624,7 +685,7 @@ rm(rri2)
 # Then we save a plot for the appendix (Figure A13) that contains all districts:
 png(
   filename = "./outputGraphics/figure A1 - expectation_2a.png",
-  width = 1100, height = 3000, res = 300, units = "px"
+  width = 1200, height = 3000, res = 300, units = "px"
 )
 ggplot(
   rri,
@@ -635,13 +696,22 @@ ggplot(
   ylab("local alignment (s=100)") +
   xlab("outgroup exposure (s=100)") +
   geom_violin( # Alignment at t=0 (white)
-    aes(y = abs(rri$iniOpAlignment2)), position = position_nudge(x = -0.1),
-    fill = "white", color = "#ababab", scale = "width", draw_quantiles = 0.5) +
+    aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.2),
+    fill = "white", color = "#ababab",
+    scale = "width", width = 0.4,
+    draw_quantiles = 0.5
+  ) +
+  geom_violin( # Max alignment (black)
+    aes(y = abs(maxOpAlignment2)), position = position_nudge(x = 0.2),
+    color = "black", fill = "black", alpha = 0.3,#fill="gray",
+    scale = "width", width = 0.4,
+    draw_quantiles = 0.5
+  ) +
   geom_violin( # Alignment at t = 200 (orange)
-    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
-    scale = "width",
-    draw_quantiles = 0.5,
-    position = position_nudge(x = 0.1)
+    color = "darkorange", fill = "darkorange", alpha = 0.8,#fill="gray",
+    scale = "width", width = 0.4,
+    draw_quantiles = 0.5#,
+    #position = position_nudge(x = 0.1)
   ) +
   facet_grid(
     rri$wijk ~ (rri$group - 1),
@@ -767,7 +837,7 @@ for (i in 1:length(labs_prep)){
 }
 
 # Points will be concentrated between very low values of alignment (t=0) and
-# very high (at t=200), and nothing in-between. To better plot these data, we
+# very high (at t=200), and nothing in-between. To better plot these data we
 # can "squash" the empty portion on the y axis.
 # adapted from https://stackoverflow.com/a/35514861
 scaleSquash <- function(from, to, factor) {
@@ -830,11 +900,6 @@ ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
     aes(x = 0, xend = 0, y = 0, yend = cut_from), size = 0.5, color = "black") +
   geom_segment( # highlighting the squashed portion on the Y axis
     aes(x = 0, xend = 0, y = cut_to, yend = 2), size = 0.5, color = "black") +
-  #geom_segment( # highlighting the squashed portion on the Y axis
-  #  aes(x = 0, xend = 0, y = cut_from, yend = cut_to),
-  #  size = 1, color = "#bdbdbd") +
-  #geom_text(aes(x = 0, y = cut_from, label = "test", angle = 45)) +
-  #geom_label(aes(x = 0, y = cut_from, label = "test")) +
   annotate("text", x = 0, y = cut_from, label = "\\", angle = "300", size = 4) +
   annotate("text", x = 0, y = cut_to, label = "\\", angle = "300", size = 4) +
   coord_cartesian(clip = "off") +

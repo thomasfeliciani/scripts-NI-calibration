@@ -1,5 +1,4 @@
-#  NI&PA 20190603 - ABM script
-#
+
 # This script is divided into two parts:
 # 1) World import - Sets up the model (agents generation, calibration)
 # 2) Simulation procedure - the core of the ABM
@@ -21,14 +20,14 @@
 #rm (list = ls())
 require(ggplot2)
 source("util.R")
-#source("geoAbm.R") ##
+source("geoAbm.R")
 
 
 
 
 # 1) World import ______________________________________________________________
 worldImport <- function(){
-  if (printStatusMessages) {print("Generating world dataframe.")}
+  if (printStatusMessages == TRUE) {print("Generating world dataframe.")}
   
   # We define the main features of agents: their position on the map
   # and group identity If we are running an 'uncalibrated' model, these
@@ -117,13 +116,6 @@ worldImport <- function(){
       probmat[,i] <<- proxmat[,i] * popDensity[i]
     }
   }
-  
-  ############################################################
-  #agents$group <<- 1
-  #G2 <<- sample(1:nrow(agents), size=citySummary$n_nwa[wijk])
-  #for (i in G2){agents$group[i] <<- -1}
-  #for(i in as.numeric(row.names(agents[order(worldList[[3]]$north),]))[1:citySummary$n_nwa[wijk]]){agents$group[i] <<- -1} #
-  ############################################################
 
 
   # We create lists of agents who belong to the two groups
@@ -142,7 +134,7 @@ worldImport <- function(){
   #  -bell-shaped distribution with different means for the two groups
   #   (beta distribution: alpha=3 and beta=3.5 for one group, 3.5 and 3 for the
   #    other group)
-  if (printStatusMessages) {print ("Generating initial opinions")}
+  if (printStatusMessages == TRUE) {print ("Generating initial opinions")}
   if (initialOpinionDistribution == "beta"){
     agents$opinion <<- rbeta(populationSize, 3, 3, ncp = 0)
     agents$opinion <<- agents$opinion * 2 - 1
@@ -166,14 +158,13 @@ worldImport <- function(){
     agents$opinion <<- agents$opinion * 2 - 1
   }
   if (printOpinionHistogram == TRUE) {histOpinion()}
-  agents$timeFirstExtr <<- agents$nIntFirstExtr <<- NA
+  agents$timeFirstPol <<- NA
   agents$durationPol <<- 0
   
-  # The setup is complete: the last thing we need to id is to initialize the
-  # time counters and to calculate the outcome measures for time = 0.
-  agents$nInteractions <<- 0
+  # The setup is complete: we finalize it by calculating the outcome
+  # measures for time = 0.
   computeSimpleMeasures(agents)
-  if (printStatusMessages) {print(paste("Setup completed on", Sys.time()))}
+  if (printStatusMessages==TRUE) {print(paste("Setup completed on", Sys.time()))}
 }
 
 
@@ -190,7 +181,7 @@ run <- function (
   resetWorld = TRUE,
   seed  =  sample.int(999999999, size = 1),
   
-  initialOpinionDistribution = "groupBias", # "uniform", "beta" or "groupBias"
+  initialOpinionDistribution = "uniform", # "uniform", "beta" or "groupBias"
   calibrationMode = "Rotterdam",# "Rotterdam" or "none".
   #
   # If calibrationMode = "Rotterdam", then the district needs to be specified:
@@ -218,7 +209,6 @@ run <- function (
   frequencyExactConvergenceTest = 100, #time steps
   indexParameters = 0,
   exportOutput = FALSE,
-  exportTimeSeries = FALSE,
   spreadAgentsinCell = FALSE,
   printStatusMessages = TRUE,
   printOpinionHistogram = TRUE,
@@ -229,7 +219,6 @@ run <- function (
   # The run starts by setting the model parameters. These are passed on by the
   # arguments of the run() function, or taken from the global environment.
   timeMax <<- timeMax
-  seed <<- seed
   initialOpinionDistribution <<- initialOpinionDistribution
   calibrationMode <<- calibrationMode
   wijk <<- wijk
@@ -254,7 +243,6 @@ run <- function (
   wb_palette <<- wb_palette
   
   # Here we set the random seed
-  RNGversion("3.5")
   set.seed(seed)
   
   # By default, every time re run() the ABM, we initialize a new agentset. 
@@ -263,14 +251,40 @@ run <- function (
   if (resetWorld == TRUE){worldImport()}
   if(printVideoFrames == TRUE){downloadBaseMap(zoom=16)}
   
-  if (exportTimeSeries == TRUE){
-    timeS <<- list()
-    timeS[[1]] <<- list()
-    timeS[[2]] <<- list()
-  }
-  
+  agents$steps <<- 0
+  agents$id <<- c(1:nrow(agents))
+  computeExtraMeasures()
+  out <- c(
+    wijk,
+    seed,
+    indexParameters,
+    steps,
+    polarizationIndex,
+    meanOpinionGlobal,
+    absOpGlobal,
+    varOpinionGlobal,
+    meanOpinionG1,
+    absOpG1,
+    varOpinionG1,
+    meanOpinionG2,
+    absOpG2,
+    varOpinionG2,
+    opClustering1,
+    opClustering2,
+    opClustering3,
+    opClusteringA1,
+    opClusteringA2,
+    opClusteringA3,
+    opAlignment1,
+    opAlignment2,
+    opAlignment3
+  )
+  longrun[1,] <<- out
+  #print(names(agents))
+  longrunW <<- agents
   # This loop defines what happens in each simulation step.
   for (t in 1:timeMax){
+    agents$steps <<- t
     if (timeMax == 0){break()}
     
     # At every time point, we ask all agents, taken one at a time and in
@@ -347,20 +361,16 @@ run <- function (
         #agents$opinion[ego] <<- NIcomputeOpinion(ego, alter)
         newOp <- NIcomputeOpinion(ego, alter)
         agents$opinion[ego] <<- newOp[1]
-        agents$nInteractions[ego] <<- agents$nInteractions[ego] + 1
         
-        if (is.na(agents$timeFirstExtr[ego]) &
+        if (is.na(agents$timeFirstPol[ego]) &
             isTRUE(all.equal(abs(newOp[1]), 1))){
-          agents$timeFirstExtr[ego] <<- steps + 1
-          agents$nIntFirstExtr[ego] <<- agents$nInteractions[ego]
+          agents$timeFirstPol[ego] <<- steps
         }
         if (typeInteraction == "two-way"){
           agents$opinion[alter] <<- newOp[2]
-          agents$nInteractions[alter] <<- agents$nInteractions[alter] + 1
-          if (is.na(agents$timeFirstExtr[alter]) &
+          if (is.na(agents$timeFirstPol[alter]) &
               isTRUE(all.equal(abs(newOp[2]), 1))){
-            agents$timeFirstExtr[alter] <<- steps + 1
-            agents$nIntFirstExtr[alter] <<- agents$nInteractions[alter]
+            agents$timeFirstPol[alter] <<- steps
           }
         }
       }
@@ -407,16 +417,8 @@ run <- function (
         {hasConverged <<- TRUE} else {hasConverged <<- FALSE}
     }
 
-    #print(steps)
-    if (exportTimeSeries == TRUE){
-      computeExtraMeasures() ##################################################
-      timeS[[1]][[steps]] <<- createoutput() # "out"
-      timeS[[2]][[steps]] <<- agents
-      agents$opClustering1 <<- agents$opClustering2 <<- agents$opClustering3 <<-
-        agents$opAlignment1 <<- agents$opAlignment2 <<- agents$opAlignment3 <<- NULL
-    }
     
-    if (printStatusMessages) {
+    if (printStatusMessages == TRUE) {
       print(paste("Time:", steps))
       #print (paste("Polarization index: ", polarizationIndex))
       }
@@ -424,142 +426,66 @@ run <- function (
       dev.off()
       histOpinion()
     }
-    if (hasConverged == TRUE | steps == timeMax) { ####################################################
-      if (hasConverged){
-        print (paste(
-          "System converged to equilibrium. Polarization index:",
-          polarizationIndex
-        ))
-      } else { # Thus, if steps == timeMax
-        if (printStatusMessages){
-          print(paste("System not converged within the simulated time.",
-                      "Simulation terminated."))
-        }
+    #if (hasConverged == TRUE) { ####################################################
+    #  print (paste("System converged to equilibrium. Polarization index:", polarizationIndex))
+    #  computeExtraMeasures() ##################################################
+    #  break
+    #}
+
+    #updateGraphics()
+    if (steps %% freqOutcomesG == 0){
+      agents$opClustering1 <<- agents$opClustering2 <<- agents$opClustering3 <<- NULL
+      agents$opAlignment1 <<- agents$opAlignment2 <<- agents$opAlignment3 <<- NULL
+      computeExtraMeasures()
+      out <- c(
+        wijk,
+        seed,
+        indexParameters,
+        steps,
+        polarizationIndex,
+        meanOpinionGlobal,
+        absOpGlobal,
+        varOpinionGlobal,
+        meanOpinionG1,
+        absOpG1,
+        varOpinionG1,
+        meanOpinionG2,
+        absOpG2,
+        varOpinionG2,
+        opClustering1,
+        opClustering2,
+        opClustering3,
+        opClusteringA1,
+        opClusteringA2,
+        opClusteringA3,
+        opAlignment1,
+        opAlignment2,
+        opAlignment3
+      )
+      #print(out)
+      #return(list(out,agents))
+      longrun[nrow(longrun) + 1,] <<- out
+      
+      if (steps %% freqOutcomesL == 0){
+        #print(names(agents))
+        longrunW<<-rbind(longrunW, agents)
+        save(
+          longrun,
+          longrunW,
+          file=paste0("./simOutput/longrun_w_", wijk, ".RData")
+        )
       }
-      computeExtraMeasures() ##################################################
+    }
+    if (steps == timeMax) {
+     # computeExtraMeasures() ##################################################
+      if (printStatusMessages == TRUE){
+        #print(paste("System not converged within the simulated time.",
+        #      "Simulation terminated."))
+      }
       break
     }
   }
-  if (exportOutput == TRUE){return(list(createoutput(),agents))}
-  if (exportTimeSeries == TRUE){return(timeS)}
 }
-
-
-createoutput <- function (...){
-  out <- as.data.frame(cbind(
-    seed,
-    indexParameters,
-    steps,
-    polarizationIndex,
-    meanOpinionGlobal,
-    absOpGlobal,
-    varOpinionGlobal,
-    meanOpinionG1,
-    absOpG1,
-    varOpinionG1,
-    meanOpinionG2,
-    absOpG2,
-    varOpinionG2,
-    opClustering1,
-    opClustering2,
-    opClustering3,
-    opClusteringA1,
-    opClusteringA2,
-    opClusteringA3,
-    opAlignment1,
-    opAlignment2,
-    opAlignment3
-  ))
-  return(out)
-}
-
-
-
-
-
-
-
-if(FALSE){
-  test <- run(
-    timeMax =2,
-    wijk = 9,
-    exportOutput = TRUE,
-    exportTimeSeries = FALSE
-  )
-  
-  
-a <- run(
-  timeMax =200,
-  wijk = 9,
-  exportOutput = FALSE,
-  exportTimeSeries = TRUE
-)
-b <- run(
-  timeMax =200,
-  wijk = 1,
-  exportOutput = FALSE,
-  exportTimeSeries = TRUE
-)
-c <- run(
-  timeMax =50,
-  wijk = 3,
-  exportOutput = FALSE,
-  exportTimeSeries = TRUE
-)
-d <- run(
-  timeMax =50,
-  wijk = 3,
-  distanceDecay = 1,
-  exportOutput = TRUE,
-  exportTimeSeries = FALSE
-)
-save(
-  a, b, c, d,
-  file="./ab.RData"
-)
-
-e <- run(
-  timeMax =50,
-  wijk = 3,
-  distanceDecay = 1,
-  exportOutput = TRUE,
-  exportTimeSeries = FALSE
-)
-}
-
-
-if (FALSE){
-  
-  run(
-    timeMax = 2,
-    resetWorld = TRUE,
-    seed  =  158749486,
-    initialOpinionDistribution = "groupBias",
-    calibrationMode = "Rotterdam",
-    wijk = 9,
-    H = 0.6,
-    Mechanism = "NI",
-    typeInteraction = "two-way",
-    distanceDecay = 2,
-    polSampleSize = 50,
-    frequencyExactConvergenceTest = 100,
-    printOpinionHistogram = FALSE,
-  )
-  
-}
-
-
-
-
-#a[[2]][[1]][1,]
-#a[[2]][[2]][1,]
-#a[[2]][[3]][1,]
-#a[[1]][[1]]
-#a[[1]][[2]]
-#a[[1]][[3]]
-
-
-
 
 # This function is what starts the model, producing as many iterations
 # as defined by the parameter timeMax.
@@ -577,16 +503,47 @@ if (FALSE){
 #run (wijk = 9, timeMax = 3, exportOutput = TRUE)
 
 #run(timeMax=50, populationSize = 10, calibrationMode = "none", resetWorld = TRUE)
-#print(agents$timeFirstExtr)
+#print(agents$timeFirstPol)
 
 
+outcomeVariables <- c(
+  "wijk",
+  "seed",
+  "indexParameters",
+  "steps",
+  "polarizationIndex",
+  "meanOpinionGlobal",
+  "absOpGlobal",
+  "varOpinionGlobal",
+  "meanOpinionG1",
+  "absOpG1",
+  "varOpinionG1",
+  "meanOpinionG2",
+  "absOpG2",
+  "varOpinionG2",
+  "opClustering1",
+  "opClustering2",
+  "opClustering3",
+  "opClusteringA1",
+  "opClusteringA2",
+  "opClusteringA3",
+  "opAlignment1",
+  "opAlignment2",
+  "opAlignment3"
+)
+freqOutcomesG <-10
+freqOutcomesL <-100
+longrun <<- data.frame(matrix(NA,ncol = length(outcomeVariables)))
+names(longrun) <- outcomeVariables
+run (
+  timeMax = 5000,
+  wijk = 1,
+  initialOpinionDistribution = "beta",
+  distanceDecay = 2,
+  H = 0.6,
+  exportOutput = TRUE
+)
 
-#run (
-#  timeMax = 3,
-#  wijk = 10,
-#  distanceDecay = 1,
-#  exportOutput = FALSE
-#)
 
 
 #save(

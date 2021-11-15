@@ -53,7 +53,7 @@ for (chunk in 1:9){
       dat <- subset(cbs100_rot, cbs100_rot$WK_CODE==districtsList[wijk])
       dat <- dat[dat$nauto2014!=0 & dat$nnwal2014!=0,]
       dat$dens <- dat$inw2014 / citySummary$n_pop[wijk]
-      ops <- c(NA, length = length(dat))
+      ops <- c()
       for (l in 1:length(dat)){ # for every cell
         cell <- subset(W, W$location == dat$OBJECTID[l])
         ops[l] <- mean(cell$opinion)
@@ -248,7 +248,7 @@ for (i in 1: nrow(GsimResults)){
   dat <- subset(cbs100_rot, cbs100_rot$WK_CODE==districtsList[wijk])
   dat <- dat[dat$nauto2014!=0 & dat$nnwal2014!=0,]
   dat$dens <- dat$inw2014 / citySummary$n_pop[wijk]
-  ops <- c(NA, length = length(dat))
+  ops <- c()
   for (l in 1:length(dat)){ # for every cell
     cell <- subset(agents, agents$location == dat$OBJECTID[l])
     ops[l] <- mean(cell$opinion)
@@ -865,7 +865,7 @@ rownames(r) <- 1:nrow(r)
 r$iniPolarizationIndex <- r$iniIntuitiveAlignment <-
   r$iniSDopinions <- r$SDopinions <- NA
 ri$iniOpAlignment3 <- ri$iniOpAlignment2 <- ri$iniOpAlignment1 <- NA
-
+ri$maxOpAlignment3 <- ri$maxOpAlignment2 <- ri$maxOpAlignment1 <- NA
 
 #samples <- list()
 #for (d in 1:nrow(citySummary)){
@@ -978,7 +978,7 @@ for (b in length(files):1) {
     dat <- subset(cbs100_rot, cbs100_rot$WK_CODE==districtsList[r$wijk[qq]])
     dat <- dat[dat$nauto2014!=0 & dat$nnwal2014!=0,]
     dat$dens <- dat$inw2014 / citySummary$n_pop[r$wijk[qq]]
-    ops <- c(NA, length = length(dat))
+    ops <- c()
     for (l in 1:length(dat)){ # for every cell
       cell <- subset(agents, agents$location == dat$OBJECTID[l])
       ops[l] <- mean(cell$opinion)
@@ -1077,7 +1077,7 @@ for (p in 1:nrow(param)){
     dat <- subset(cbs100_rot, cbs100_rot$WK_CODE==districtsList[wijk])
     dat <- dat[dat$nauto2014!=0 & dat$nnwal2014!=0,]
     dat$dens <- dat$inw2014 / citySummary$n_pop[wijk]
-    ops <- c(NA, length = length(dat))
+    ops <- c()
     for (l in 1:length(dat)){ # for every cell
       cell <- subset(agents, agents$location == dat$OBJECTID[l])
       ops[l] <- mean(cell$opinion)
@@ -1128,11 +1128,13 @@ save(iniAli, ri, file = "./simOutput/iniAli.RDATA")
 
 
 # Re-calculating the max alignment in all districts.
-# This updates the "maxAlignment" variables of citySummary.
+# This updates the "maxAlignment" variables of citySummary (district level) and
+# adds "maxAlignment" variables to the agent level simulation results.
 
 source("script NI&PA.R")
 source("util.R")
 
+ri$maxOpAlignment3 <- ri$maxOpAlignment2 <- ri$maxOpAlignment1 <- NA
 maxAlignment1 <- maxAlignment2 <- maxAlignment3 <- c()
 
 for (wijk in 1:nrow(citySummary)){
@@ -1156,7 +1158,7 @@ for (wijk in 1:nrow(citySummary)){
   dat <- subset(cbs100_rot, cbs100_rot$WK_CODE==districtsList[wijk])
   dat <- dat[dat$nauto2014!=0 & dat$nnwal2014!=0,]
   dat$dens <- dat$inw2014 / citySummary$n_pop[wijk]
-  ops <- c(NA, length = length(dat))
+  ops <- c()
   for (l in 1:length(dat)){ # for every cell
     cell <- subset(agents, agents$location == dat$OBJECTID[l])
     ops[l] <- mean(cell$opinion)
@@ -1165,34 +1167,44 @@ for (wijk in 1:nrow(citySummary)){
   
   
   # Now that he have the maximum theoretical degree of alignment, we can 
-  # calculate and store how high global Moran's I scores.
-  # NOTE: we do this three times, one for each distance decay function.
-  maxAlignment1[wijk] <- abs(moranI( # opinion-group alignment
+  # calculate and store how high global Moran's I scores can get.
+  # We need to do this three times, one for each distance decay function.
+  maxAlignment1 <- moranI( # opinion-group alignment
     x = dat$pnwal2014,
     y = dat$opinion,
     proxmat = proximityList1[[wijk]],
     dens = dat$dens,
     N = citySummary$n_pop[wijk]
-  )$globalI)
-  maxAlignment2[wijk] <- abs(moranI( # opinion-group alignment
+  )
+  maxAlignment2 <- moranI( # opinion-group alignment
     x = dat$pnwal2014,
     y = dat$opinion,
     proxmat = proximityList2[[wijk]],
     dens = dat$dens,
     N = citySummary$n_pop[wijk]
-  )$globalI)
-  maxAlignment3[wijk] <- abs(moranI( # opinion-group alignment
+  )
+  maxAlignment3 <- moranI( # opinion-group alignment
     x = dat$pnwal2014,
     y = dat$opinion,
     proxmat = proximityList3[[wijk]],
     dens = dat$dens,
     N = citySummary$n_pop[wijk]
-  )$globalI)
+  )
+  
+  # Adding max alignment to the global-level city summary
+  citySummary$maxAlignment1[wijk] <- abs(maxAlignment1$globalI)
+  citySummary$maxAlignment2[wijk] <- abs(maxAlignment2$globalI)
+  citySummary$maxAlignment3[wijk] <- abs(maxAlignment3$globalI)
+  
+  # Adding max alignment to the agent-level simulation results
+  for (v in 1:nrow(dat)) {
+    ri$maxOpAlignment1[ri$wijk==wijk & ri$index==v] <- maxAlignment1$localI[v]
+    ri$maxOpAlignment2[ri$wijk==wijk & ri$index==v] <- maxAlignment2$localI[v]
+    ri$maxOpAlignment3[ri$wijk==wijk & ri$index==v] <- maxAlignment3$localI[v]
+  }
 }
 
-citySummary$maxAlignment1 <- maxAlignment1
-citySummary$maxAlignment2 <- maxAlignment2
-citySummary$maxAlignment3 <- maxAlignment3
+
 
 
 # To citySummary we also add a column for the max SD of opinions: i.e. the
