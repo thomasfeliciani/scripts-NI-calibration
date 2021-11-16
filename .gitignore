@@ -17,7 +17,8 @@ test.r
 .Rapp.history
 
 # Session Data files
-.RData
+*.RData
+/*.Rproj
 
 # User-specific files
 .Ruserdata
