@@ -187,7 +187,7 @@ run <- function (
                 levels = c("-1", "1"),
                 labels = c("native and western", "non-western"))
       ) +
-      scale_x_continuous(limits = c(-1.05,1)) +
+      scale_x_continuous(limits = c(-1.05,1.05)) +
       ggtitle(paste0(
         "District: ", citySummary$district[wijk],
         ". Time index: ", steps, " of ", timeMax))
