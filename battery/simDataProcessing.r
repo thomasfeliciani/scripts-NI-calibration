@@ -11,8 +11,8 @@ rm (list = ls( ))
 
 #source("geoAbm.R")
 load("./cityData/geodata_Rotterdam.RData")
-source("script NI&PA.R")
-source("util.R")
+source("simulation.r")
+source("util.r")
 files <- list.files(path = "./simOutput/peregrine/")
 library(compiler)
 enableJIT(1)
@@ -240,7 +240,7 @@ for (i in 1: nrow(GsimResults)){
     distanceDecay = GsimResults$distanceDecay[i],
     initialOpinionDistribution = GsimResults$initialOpinionDistribution[i],
     H = GsimResults$H[i],
-    exportOutput = FALSE,
+    #exportOutput = FALSE,
     exportTimeSeries = FALSE
   )
   
@@ -857,7 +857,7 @@ rm (list = ls( ))
 load("./cityData/geodata_Rotterdam.RData")
 load("./simOutput/completeDataset.RDATA")
 files <- list.files(path = "./simOutput/peregrine/")
-source("script NI&PA.R")
+source("simulation.r")
 library("compiler")
 
 rownames(r) <- 1:nrow(r)
@@ -1131,8 +1131,8 @@ save(iniAli, ri, file = "./simOutput/iniAli.RDATA")
 # This updates the "maxAlignment" variables of citySummary (district level) and
 # adds "maxAlignment" variables to the agent level simulation results.
 
-source("script NI&PA.R")
-source("util.R")
+#source("simulation.r")
+source("util.r")
 
 ri$maxOpAlignment3 <- ri$maxOpAlignment2 <- ri$maxOpAlignment1 <- NA
 maxAlignment1 <- maxAlignment2 <- maxAlignment3 <- c()
@@ -1140,8 +1140,9 @@ maxAlignment1 <- maxAlignment2 <- maxAlignment3 <- c()
 for (wijk in 1:nrow(citySummary)){
   
   # Create wijk
-  run(timeMax=0, wijk=wijk)
   print(paste("Calculating max alignment in", districtsNames[wijk]))
+  #run(timeMax=0, wijk=wijk)
+  agents <- worldList[[wijk]]
   
   # Impose maximum alignment (give opinion=1 to all members of group 1, and
   # give opinion=-1 to the rest)

@@ -3,7 +3,7 @@ _Latest edits: 15 November 2021._
 # Calibrated repulsive influence model
 This repository concerns an agent-based model (ABM) of opinion dynamics. It runs an empirically calibrated, spatially explicit version of the repulsive influence model (aka “negative influence” model- or simply _RI-_ or _NI-_ model). The ABM and this repository are used in a research paper currently in preparation.
 
-This code runs in [R 4.1.0](https://www.r-project.org/) (R Core Team, 2021).
+This code runs in [R 4.2.0](https://www.r-project.org/) (R Core Team, 2022).
 
 Follows a description of the contents of this repository.
 
@@ -56,5 +56,5 @@ The file “geodata_Rotterdam.RData”, is the only content of this folder stric
 * CBS (2021). _Kaart van 100 meter bij 100 meter met statistieken_. https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/kaart-van-100-meter-bij-100-meter-met-statistieken
 * Grimm, V., Berger, U., DeAngelis, D. L., Polhill, J. G., Giske, J., & Railsback, S. F. (2010). The ODD protocol: a review and first update. _Ecological modelling_, 221(23), 2760-2768.
 * NGR (2017). _Wijk- en Buurtkaart 2014 versie 3_. https://www.nationaalgeoregister.nl/geonetwork/srv/api/records/8eee71f9-9365-490d-9484-00263c6fa35c/formatters/xsl-view?view=advanced&portalLink=
-* R Core Team (2021). _R: A language and environment for statistical computing_. R Foundation for Statistical Computing, Vienna, Austria. https://www.R-project.org/.
+* R Core Team (2022). _R: A language and environment for statistical computing_. R Foundation for Statistical Computing, Vienna, Austria. https://www.R-project.org/.
 

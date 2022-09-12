@@ -1,6 +1,8 @@
 # This script reproduces the figures for the NI calibration paper.
 
 #rm (list = ls())
+#source("simulation.r")
+#source("util.r")
 library(gridExtra)
 library(ggplot2)
 library(reshape2)
@@ -93,8 +95,8 @@ d <- rbind(d1,d2)
 d$col <- as.factor(d$col)
 
 
-png(
-  filename = "./outputGraphics/figure 1 - outgroup exposure example.png",
+tiff(
+  filename = "./outputGraphics/figure 1 - outgroup exposure example.tiff",
   width = 1000, height = 500, res = 300, units = "px"
 )
 ggplot (d, aes(x = x, y = y, fill = col)) +
@@ -178,8 +180,8 @@ labs <- data.frame(
   y = c(2.1,2.1)
 )
 
-png(
-  filename = "./outputGraphics/figure 2 - initial opinion distributions.png",
+tiff(
+  filename = "./outputGraphics/figure 2 - initial opinion distributions.tiff",
   width = 1200, height = 700, res = 300, units = "px"
 )
 ggplot(data = d, aes(x = o, y = y)) +
@@ -226,8 +228,8 @@ labs <- data.frame(
   y = c(0.5, 0.5, 0.5)
 )
 
-png(
-  filename = "./outputGraphics/figure 3 - distance decay.png",
+tiff(
+  filename = "./outputGraphics/figure 3 - distance decay.tiff",
   width = 1000, height = 850, res = 300, units = "px"
 )
 ggplot(data = d) +
@@ -346,12 +348,15 @@ ri$maxOpAlignment1 <- abs(ri$maxOpAlignment1)
 ri$maxOpAlignment2 <- abs(ri$maxOpAlignment2)
 ri$maxOpAlignment3 <- abs(ri$maxOpAlignment3)
 
+
+# And we add a few new variables:
 r$maxAlignment3 <- r$maxAlignment2 <- r$maxAlignment1 <- r$maxSDopinions <- NA
 for (w in 1:12) {
-  r[r$wijk == w, "maxSDopinions"] <- citySummary$maxSDopinions[w]
   r[r$wijk == w, "maxAlignment1"] <- citySummary$maxAlignment1[w]
   r[r$wijk == w, "maxAlignment2"] <- citySummary$maxAlignment2[w]
   r[r$wijk == w, "maxAlignment3"] <- citySummary$maxAlignment3[w]
+  
+  r[r$wijk == w, "maxSDopinions"] <- citySummary$maxSDopinions[w]
 }
 
 
@@ -380,9 +385,9 @@ rri <- subset( # Agent-level information
 #
 # We filter out agents who never developed extreme attitudes:
 rri2 <- rri[!is.na(rri$timeFirstExtr),]
-png(
-  filename = "./outputGraphics/figure 4 - expectation_1a.png",
-  width = 1800, height = 1400, res = 300, units = "px"
+tiff(
+  filename = "./outputGraphics/figure 4 - expectation_1a.tiff",
+  width = 1900, height = 1400, res = 300, units = "px"
 )
 ggplot(
   rri2,
@@ -391,7 +396,7 @@ ggplot(
     log10(nIntFirstExtr)
   )) +
   ylab("number of interactions to\nfirst extremization (log_10)") +
-  xlab("outgroup exposure (s=100)") +
+  xlab("local outgroup exposure (s=100)") +
   geom_violin(
     color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
     draw_quantiles = c(0.5)#,
@@ -416,8 +421,8 @@ rm(rri2)
 # of polarization at any given point of time (i.e. measured as the average
 # number of interaction events per agent).
 #
-#png(
-#  filename = "./outputGraphics/figure 5 - expectation_1b.png",
+#tiff(
+#  filename = "./outputGraphics/figure 5 - expectation_1b.tiff",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
 #print(districtViolins(
@@ -442,8 +447,8 @@ for (i in 1:length(labs_prep)){
   )
 }
 
-png(
-  filename = "./outputGraphics/figure 5 - expectation_1b.png",
+tiff(
+  filename = "./outputGraphics/figure 5 - expectation_1b.tiff",
   width = 1300, height = 1200, res = 300, units = "px"
 )
 
@@ -470,7 +475,7 @@ ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
   ) + 
   scale_x_discrete(labels=labs) +
   scale_y_continuous(expand = c(0,0.02), limits = c(NA,1)) +
-  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ggtitle("districts ordered by\naverage local outgroup exposure (s=100)") +
   ylab("attitude polarization") +
   theme(
     plot.margin=unit(c(0,0,0,40),"pt"),
@@ -490,8 +495,8 @@ dev.off()
 
 # Figure 6 _____________________________________________________________________
 # Showing non-relevant runs from the baseline:
-#png(
-#  filename = "./outputGraphics/figure X - polarized runs.png",
+#tiff(
+#  filename = "./outputGraphics/figure X - polarized runs.tiff",
 #  width = 1200, height = 1000, res = 300, units = "px"
 #)
 #hist(
@@ -505,8 +510,8 @@ dev.off()
 #dev.off()
 #
 # And here are all runs (not only the baseline)
-#png(
-#  filename = "./outputGraphics/filtering polarized runs _ all runs.png",
+#tiff(
+#  filename = "./outputGraphics/filtering polarized runs _ all runs.tiff",
 #  width = 1200, height = 1000, res = 300, units = "px"
 #)
 #hist(
@@ -531,7 +536,10 @@ dev.off()
 #
 library(ggmap)
 library(ggsn)
+
+temp <- citySummary
 load("./cityData/geodata_Rotterdam.RData")
+citySummary <- temp; rm(temp)
 #load("./simOutput/completeDataset.RDATA") 
 
 # Selecting the baseline runs from Pernis:
@@ -574,8 +582,8 @@ myMap <- get_stamenmap(
   crop = FALSE, zoom = 16
 )
 
-png(
-  filename = "./outputGraphics/figure 6 - map.png",
+tiff(
+  filename = "./outputGraphics/figure 6 - map.tiff",
   width = 1700, height = 1150, units = "px", res = 300
 )
 
@@ -608,7 +616,7 @@ ggmap(myMap, darken = c(0.6, "white")) +
   )
 
 dev.off() 
-# Map tiles by Stamen Design 2021
+# Map tiles by Stamen Design 2022
 
 
 
@@ -634,8 +642,8 @@ rri2 <- rri[rri$wijk %in% c(1, 4, 7),]
 #    ri$H == 0.6 &ri$distanceDecay == 2 & ri$wijk %in% c(1, 4, 7)
 #)
 
-png(
-  filename = "./outputGraphics/figure 7 - expectation_2a.png",
+tiff(
+  filename = "./outputGraphics/figure 7 - expectation_2a.tiff",
   width = 1200, height = 1200, res = 300, units = "px"
 )
 ggplot(
@@ -647,7 +655,7 @@ ggplot(
   #ggtitle("3rd run per district") +
   #ggtitle("no group bias") +
   ylab("local alignment (s=100)") +
-  xlab("outgroup exposure (s=100)") +
+  xlab("local outgroup exposure (s=100)") +
   geom_violin( # Alignment at t=0 (white)
     aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.2),
     fill = "white", color = "#ababab",
@@ -684,9 +692,9 @@ ggplot(
 dev.off()
 rm(rri2)
 
-# Then we save a plot for the appendix (Figure A13) that contains all districts:
-png(
-  filename = "./outputGraphics/figure B1 - expectation_2a.png",
+# Then we save a plot for the appendix (Figure 16) that contains all districts:
+tiff(
+  filename = "./outputGraphics/figure 16 - expectation_2a.tiff",
   width = 1200, height = 3000, res = 300, units = "px"
 )
 ggplot(
@@ -696,7 +704,7 @@ ggplot(
     abs(opAlignment2)#, fill=as.factor(rri$group)
   )) +
   ylab("local alignment (s=100)") +
-  xlab("outgroup exposure (s=100)") +
+  xlab("local outgroup exposure (s=100)") +
   geom_violin( # Alignment at t=0 (white)
     aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.2),
     fill = "white", color = "#ababab",
@@ -739,8 +747,8 @@ dev.off()
 # Districts with higher levels of mean outgroup exposure exhibit higher average
 # local alignment.
 
-#png(
-#  filename = "./outputGraphics/figure 8 - expectation_2b.png",
+#tiff(
+#  filename = "./outputGraphics/figure 8 - expectation_2b.tiff",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
 #print(districtViolins(
@@ -760,15 +768,15 @@ for (i in 1:length(labs_prep)){
     labs_prep[i],
     " (",
     round(
-      subset(citySummary, citySummary$district==labs_prep[i])$expOutgr2,
+      subset(citySummary, citySummary$district == labs_prep[i])$expOutgr2,
       digits = 3
     ),
     ")"
   )
 }
 
-png(
-  filename = "./outputGraphics/figure 8 - expectation_2b.png",
+tiff(
+  filename = "./outputGraphics/figure 8 - expectation_2b.tiff",
   width = 1300, height = 1200, res = 300, units = "px"
 )
 
@@ -789,12 +797,12 @@ ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
     draw_quantiles = 0.5
   ) +
   ylab("average local alignment (s=100)") +
-  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ggtitle("districts ordered by\naverage local outgroup exposure (s=100)") +
   scale_x_discrete(labels=labs) +
   scale_y_continuous(expand = c(0,0)) +
   theme(
-    plot.margin=unit(c(0,0,0,40),"pt"),
-    plot.title = element_text(hjust=0.5),
+    plot.margin = unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust = 0.5),
     axis.text.x = element_text(angle = 45, hjust = 1),
     axis.title.x = element_blank(),
     panel.grid.major = element_blank(),
@@ -812,8 +820,8 @@ dev.off()
 # There is an inverted U-shaped effect of average outgroup exposure
 # in the district and the difference between the average attitude of
 # the two groups (global level alignment).
-#png(
-#  filename = "./outputGraphics/figure 9 - expectation_2c.png",
+#tiff(
+#  filename = "./outputGraphics/figure 9 - expectation_2c.tiff",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
 #districtViolins(
@@ -831,7 +839,7 @@ for (i in 1:length(labs_prep)){
     labs_prep[i],
     " (",
     round(
-      subset(citySummary, citySummary$district==labs_prep[i])[,"expOutgr2"],
+      subset(citySummary, citySummary$district == labs_prep[i])[,"expOutgr2"],
       digits = 3
     ),
     ")"
@@ -868,8 +876,8 @@ cut_from = 0.26
 cut_to = 1.66
 breaks = 0:20/10
 
-png(
-  filename = "./outputGraphics/figure 9 - expectation_2c.png",
+tiff(
+  filename = "./outputGraphics/figure 9 - expectation_2c.tiff",
   width = 1300, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
@@ -885,7 +893,7 @@ ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
     scale = "width",
     draw_quantiles = 0.5
   ) +
-  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ggtitle("districts ordered by\naverage local outgroup exposure (s=100)") +
   ylab("attitude difference between groups") +
   scale_x_discrete(labels = labs) +
   scale_y_continuous(
@@ -906,8 +914,8 @@ ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
   annotate("text", x = 0, y = cut_to, label = "\\", angle = "300", size = 4) +
   coord_cartesian(clip = "off") +
   theme(
-    plot.margin=unit(c(0,0,0,40),"pt"),
-    plot.title = element_text(hjust=0.5),
+    plot.margin = unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust = 0.5),
     axis.text.x = element_text(angle = 45, hjust = 1),
     axis.title.x = element_blank(),
     panel.grid.major = element_blank(),
@@ -951,8 +959,8 @@ labeller = c("0.6"="H = 0.6\n(baseline)", "0.9" = "H = 0.9")
 # fewer interactions.
 rri2 <- rri[!is.na(rri$timeFirstExtr),]
 
-#png(
-#  filename = "./outputGraphics/figure 4 - expectation_1a.png",
+#tiff(
+#  filename = "./outputGraphics/figure 4 - expectation_1a.tiff",
 #  width = 1800, height = 1400, res = 300, units = "px"
 #)
 ggplot(
@@ -988,12 +996,12 @@ ggplot(
 # Districts with higher levels of mean outgroup exposure exhibit a higher degree
 # of polarization at any given point of time (i.e. measured as the average
 # number of interaction events per agent).
-#png(
-#  filename = "./outputGraphics/figure 5 - expectation_1b.png",
+#tiff(
+#  filename = "./outputGraphics/figure 5 - expectation_1b.tiff",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
-png(
-  filename = "./outputGraphics/figure A1.png",
+tiff(
+  filename = "./outputGraphics/figure 10.tiff",
   width = 1600, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
@@ -1019,7 +1027,7 @@ ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
   ) +
   scale_x_discrete(labels=labs) +
   scale_y_continuous(expand = c(0,0.02), limits = c(NA,1)) +
-  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ggtitle("districts ordered by\naverage local outgroup exposure (s=100)") +
   ylab("attitude polarization") +
   theme(
     plot.margin=unit(c(0,0,0,40),"pt"),
@@ -1055,8 +1063,8 @@ rri2 <- rri[rri$wijk %in% c(1, 4, 7) & rri$group == -1,]
 #rr2 <- rr[rr$SDopinions > 0.3,] #polarized runs
 #rri2 <- rri2[rri2$seed %in% rr2$seed,]#agents from polarized runs 
 
-#png(
-#  filename = "./outputGraphics/figure 7 - expectation_2a.png",
+#tiff(
+#  filename = "./outputGraphics/figure 7 - expectation_2a.tiff",
 #  width = 1100, height = 1200, res = 300, units = "px"
 #)
 ggplot(
@@ -1066,7 +1074,7 @@ ggplot(
     abs(opAlignment2)
   )) +
   ylab("local alignment (s=100)") +
-  xlab("outgroup exposure (s=100)") +
+  xlab("local outgroup exposure (s=100)") +
   geom_violin( # Alignment at t=0 (white)
     aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.1),
     fill = "white", color = "#ababab", scale = "width", draw_quantiles = 0.5) +
@@ -1097,8 +1105,8 @@ ggplot(
 # Expectation 2b) 
 # Districts with higher levels of mean outgroup exposure exhibit higher average
 # local alignment.
-#png(
-#  filename = "./outputGraphics/figure 8 - expectation_2b.png",
+#tiff(
+#  filename = "./outputGraphics/figure 8 - expectation_2b.tiff",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
 ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
@@ -1122,7 +1130,7 @@ ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
     labeller = as_labeller(labeller)
   ) +
   ylab("average local alignment (s=100)") +
-  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ggtitle("districts ordered by\naverage local outgroup exposure (s=100)") +
   scale_x_discrete(labels=labs) +
   scale_y_continuous(expand = c(0,0)) +
   theme(
@@ -1142,12 +1150,12 @@ ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
 # There is an inverted U-shaped effect of average outgroup exposure
 # in the district and the difference between the average attitude of
 # the two groups (global level alignment).
-#png(
-#  filename = "./outputGraphics/figure 9 - expectation_2c.png",
+#tiff(
+#  filename = "./outputGraphics/figure 9 - expectation_2c.tiff",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
-png(
-  filename = "./outputGraphics/figure A2.png",
+tiff(
+  filename = "./outputGraphics/figure 11.tiff",
   width = 1600, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
@@ -1163,7 +1171,7 @@ ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
     scale = "width",
     draw_quantiles = 0.5
   ) +
-  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ggtitle("districts ordered by\naverage local outgroup exposure (s=100)") +
   ylab("attitude difference between groups") +
   scale_x_discrete(labels = labs) +
   scale_y_continuous(limits = c(0,2.1) ) +#, expand = c(0,0)) +
@@ -1222,8 +1230,8 @@ rri <- rri[rr$initialOpinionDistribution != "uniform",]
 # Agents who are more exposed to outgroup agents develop extreme attitudes after
 # fewer interactions.
 rri2 <- rri[!is.na(rri$timeFirstExtr),]
-#png(
-#  filename = "./outputGraphics/figure 4 - expectation_1a.png",
+#tiff(
+#  filename = "./outputGraphics/figure 4 - expectation_1a.tiff",
 #  width = 1800, height = 1400, res = 300, units = "px"
 #)
 ggplot(
@@ -1260,12 +1268,12 @@ ggplot(
 # Districts with higher levels of mean outgroup exposure exhibit a higher degree
 # of polarization at any given point of time (i.e. measured as the average
 # number of interaction events per agent).
-#png(
-#  filename = "./outputGraphics/figure 5 - expectation_1b.png",
+#tiff(
+#  filename = "./outputGraphics/figure 5 - expectation_1b.tiff",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
-png(
-  filename = "./outputGraphics/figure A3.png",
+tiff(
+  filename = "./outputGraphics/figure 12.tiff",
   width = 1600, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
@@ -1290,7 +1298,7 @@ ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
   ) +
   scale_x_discrete(labels=labs) +
   scale_y_continuous(expand = c(0,0.02), limits = c(NA,1)) +
-  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ggtitle("districts ordered by\naverage local outgroup exposure (s=100)") +
   ylab("attitude polarization") +
   theme(
     plot.margin=unit(c(0,0,0,40),"pt"),
@@ -1319,8 +1327,8 @@ rri2 <- rri2[rri2$seed %in% rr2$seed,]#agents from polarized runs
 
 
 
-#png(
-#  filename = "./outputGraphics/figure 7 - expectation_2a.png",
+#tiff(
+#  filename = "./outputGraphics/figure 7 - expectation_2a.tiff",
 #  width = 1100, height = 1200, res = 300, units = "px"
 #)
 ggplot(
@@ -1361,8 +1369,8 @@ ggplot(
 # Expectation 2b) 
 # Districts with higher levels of mean outgroup exposure exhibit higher average
 # local alignment.
-#png(
-#  filename = "./outputGraphics/figure 8 - expectation_2b.png",
+#tiff(
+#  filename = "./outputGraphics/figure 8 - expectation_2b.tiff",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
 ggplot(rr2, aes(factor(expOutgr2), opAlignment2)) +
@@ -1406,8 +1414,8 @@ ggplot(rr2, aes(factor(expOutgr2), opAlignment2)) +
 # There is an inverted U-shaped effect of average outgroup exposure
 # in the district and the difference between the average attitude of
 # the two groups (global level alignment).
-png(
-  filename = "./outputGraphics/figure A4.png",
+tiff(
+  filename = "./outputGraphics/figure 13.tiff",
   width = 1600, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
@@ -1423,7 +1431,7 @@ ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
     scale = "width",
     draw_quantiles = 0.5
   ) +
-  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ggtitle("districts ordered by\naverage local outgroup exposure (s=100)") +
   ylab("attitude difference between groups") +
   scale_x_discrete(labels = labs) +
   scale_y_continuous(limits = c(0,2.1) ) +#, expand = c(0,0)) +
@@ -1492,8 +1500,8 @@ labeller = c(
 # Agents who are more exposed to outgroup agents develop extreme attitudes after
 # fewer interactions.
 rri2 <- rri[!is.na(rri$timeFirstExtr),]
-#png(
-#  filename = "./outputGraphics/figure 4 - expectation_1a.png",
+#tiff(
+#  filename = "./outputGraphics/figure 4 - expectation_1a.tiff",
 #  width = 1800, height = 1400, res = 300, units = "px"
 #)
 ggplot(
@@ -1503,7 +1511,7 @@ ggplot(
     log10(nIntFirstExtr)
   )) +
   ylab("number of interactions to\nfirst extremization (log_10)") +
-  xlab("outgroup exposure (s=100)") +
+  xlab("average outgroup exposure (s=100)") +
   geom_violin(
     color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
     draw_quantiles = c(0.5)#,
@@ -1530,8 +1538,8 @@ ggplot(
 # Districts with higher levels of mean outgroup exposure exhibit a higher degree
 # of polarization at any given point of time (i.e. measured as the average
 # number of interaction events per agent).
-png(
-  filename = "./outputGraphics/figure A5.png",
+tiff(
+  filename = "./outputGraphics/figure 14.tiff",
   width = 2200, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
@@ -1556,7 +1564,7 @@ ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
   ) +
   scale_x_discrete(labels=labs) +
   scale_y_continuous(expand = c(0,0.02), limits = c(NA,1)) +
-  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ggtitle("districts ordered by\naverage local outgroup exposure (s=100)") +
   ylab("attitude polarization") +
   theme(
     plot.margin=unit(c(0,0,0,40),"pt"),
@@ -1583,8 +1591,8 @@ rri2 <- rri[rri$wijk %in% c(1, 4, 7) & rri$group == -1,]
 rr2 <- rr[rr$SDopinions > 0.3,] #polarized runs
 rri2 <- rri2[rri2$seed %in% rr2$seed,]#agents from polarized runs 
 
-#png(
-#  filename = "./outputGraphics/figure 7 - expectation_2a.png",
+#tiff(
+#  filename = "./outputGraphics/figure 7 - expectation_2a.tiff",
 #  width = 1100, height = 1200, res = 300, units = "px"
 #)
 ggplot(
@@ -1594,7 +1602,7 @@ ggplot(
     abs(opAlignment2)
   )) +
   ylab("local alignment (s=100)") +
-  xlab("outgroup exposure (s=100)") +
+  xlab("local outgroup exposure (s=100)") +
   geom_violin( # Alignment at t=0 (white)
     aes(y = abs(iniOpAlignment2)), position = position_nudge(x = -0.1),
     fill = "white", color = "#ababab", scale = "width", draw_quantiles = 0.5) +
@@ -1624,8 +1632,8 @@ ggplot(
 # Expectation 2b) 
 # Districts with higher levels of mean outgroup exposure exhibit higher average
 # local alignment.
-#png(
-#  filename = "./outputGraphics/figure 8 - expectation_2b.png",
+#tiff(
+#  filename = "./outputGraphics/figure 8 - expectation_2b.tiff",
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
 ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
@@ -1649,7 +1657,7 @@ ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
     labeller = as_labeller(labeller)
   ) +
   ylab("average local alignment (s=100)") +
-  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ggtitle("districts ordered by\naverage local outgroup exposure (s=100)") +
   scale_x_discrete(labels=labs) +
   scale_y_continuous(expand = c(0,0)) +
   theme(
@@ -1669,8 +1677,8 @@ ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
 # There is an inverted U-shaped effect of average outgroup exposure
 # in the district and the difference between the average attitude of
 # the two groups (global level alignment).
-png(
-  filename = "./outputGraphics/figure A6.png",
+tiff(
+  filename = "./outputGraphics/figure 15.tiff",
   width = 2200, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
@@ -1686,7 +1694,7 @@ ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
     scale = "width",
     draw_quantiles = 0.5
   ) +
-  ggtitle("districts ordered by\naverage outgroup exposure (s=100)") +
+  ggtitle("districts ordered by\naverage local outgroup exposure (s=100)") +
   ylab("attitude difference between groups") +
   scale_x_discrete(labels = labs) +
   scale_y_continuous(limits = c(0,2.1) ) +#, expand = c(0,0)) +
@@ -1803,8 +1811,8 @@ rri <- subset(
     ri$distanceDecay == 2
 )
 # 1a)
-png(
-  filename = "./outputGraphics/robustness_H_1a.png",
+tiff(
+  filename = "./outputGraphics/robustness_H_1a.tiff",
   width = 2000, height = 1000, res = 300, units = "px"
 )
 violinPlotOld(
@@ -1817,8 +1825,8 @@ violinPlotOld(
 dev.off()
 
 # 1b)
-png(
-  filename = "./outputGraphics/robustness_H_1b.png",
+tiff(
+  filename = "./outputGraphics/robustness_H_1b.tiff",
   width = 2000, height = 1000, res = 300, units = "px"
 )
 print(districtViolins(
@@ -1833,8 +1841,8 @@ dev.off()
 # 2a)
 #rr <- subset(rr, rr$polarizationIndex >= 0.3)
 #rri <- subset(rri, rri$seed %in% rr$seed)
-#png(
-#  filename = "./outputGraphics/robustness_H_2a.png",
+#tiff(
+#  filename = "./outputGraphics/robustness_H_2a.tiff",
 #  width = 2000, height = 2000, res = 300, units = "px"
 #)
 #violinPlotOld(
@@ -1886,8 +1894,8 @@ rri <- subset(
 )
 
 # 1a)
-png(
-  filename = "./outputGraphics/robustness_opDistr_1a.png",
+tiff(
+  filename = "./outputGraphics/robustness_opDistr_1a.tiff",
   width = 2000, height = 1000, res = 300, units = "px"
 )
 violinPlotOld(
@@ -1905,8 +1913,8 @@ dev.off()
 
 
 # 1b)
-png(
-  filename = "./outputGraphics/robustness_opDistr_1b.png",
+tiff(
+  filename = "./outputGraphics/robustness_opDistr_1b.tiff",
   width = 2200, height = 1100, res = 300, units = "px"
 )
 print(districtViolins(
@@ -1925,8 +1933,8 @@ dev.off()
 # 2a)
 rr <- subset(rr, rr$polarizationIndex >= 0.3)
 rri <- subset(rri, rri$seed %in% rr$seed)
-png(
-  filename = "./outputGraphics/robustness_opDistr_2a.png",
+tiff(
+  filename = "./outputGraphics/robustness_opDistr_2a.tiff",
   width = 1800, height = 1400, res = 300, units = "px"
 )
 violinPlotOld(
@@ -1944,8 +1952,8 @@ violinPlotOld(
 dev.off()
 
 # 2b)
-png(
-  filename = "./outputGraphics/robustness_opDistr_2b.png",
+tiff(
+  filename = "./outputGraphics/robustness_opDistr_2b.tiff",
   width = 2200, height = 1100, res = 300, units = "px"
 )
 print(districtViolins(
@@ -1963,8 +1971,8 @@ print(districtViolins(
 dev.off()
 
 # 2c)
-png(
-  filename = "./outputGraphics/robustness_opDistr_2c.png",
+tiff(
+  filename = "./outputGraphics/robustness_opDistr_2c.tiff",
   width = 2200, height = 1100, res = 300, units = "px"
 )
 districtViolins(
@@ -2003,8 +2011,8 @@ rri <- subset(
 )
 
 # 1a)
-png(
-  filename = "./outputGraphics/robustness_DDFint_1a.png",
+tiff(
+  filename = "./outputGraphics/robustness_DDFint_1a.tiff",
   width = 2000, height = 1000, res = 300, units = "px"
 )
 violinPlotOld(
@@ -2021,8 +2029,8 @@ violinPlotOld(
 dev.off()
 
 # 1b)
-png(
-  filename = "./outputGraphics/robustness_DDFint_1b.png",
+tiff(
+  filename = "./outputGraphics/robustness_DDFint_1b.tiff",
   width = 2200, height = 1100, res = 300, units = "px"
 )
 print(districtViolins(
@@ -2041,8 +2049,8 @@ dev.off()
 # 2a)
 rr <- subset(rr, rr$polarizationIndex >= 0.3)
 rri <- subset(rri, rri$seed %in% rr$seed)
-png(
-  filename = "./outputGraphics/robustness_DDFint_2a.png",
+tiff(
+  filename = "./outputGraphics/robustness_DDFint_2a.tiff",
   width = 1800, height = 1400, res = 300, units = "px"
 )
 violinPlotOld(
@@ -2060,8 +2068,8 @@ violinPlotOld(
 dev.off()
 
 # 2b)
-png(
-  filename = "./outputGraphics/robustness_DDFint_2b.png",
+tiff(
+  filename = "./outputGraphics/robustness_DDFint_2b.tiff",
   width = 2200, height = 1100, res = 300, units = "px"
 )
 print(districtViolins(
@@ -2079,8 +2087,8 @@ print(districtViolins(
 dev.off()
 
 # 2c)
-png(
-  filename = "./outputGraphics/robustness_DDFint_2c.png",
+tiff(
+  filename = "./outputGraphics/robustness_DDFint_2c.tiff",
   width = 2200, height = 1100, res = 300, units = "px"
 )
 districtViolins(
