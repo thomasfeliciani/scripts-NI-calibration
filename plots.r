@@ -1,12 +1,16 @@
 # This script reproduces the figures for the NI calibration paper.
 
-#rm (list = ls())
+#rm (list = ls()); gc()
 #source("simulation.r")
 #source("util.r")
 library(gridExtra)
+library(gtable)
 library(ggplot2)
 library(reshape2)
 library(scales)
+library(sf)
+library(ggmap)
+library(ggsn)
 
 
 # The next block of code ensures that the data directories exist, and creates
@@ -69,9 +73,329 @@ load("./simOutput/completeDataset.RDATA")
 
 
 
+# Figure X______________________________________________________________________
+# Map
+#
+
+#library("rgdal")
+#library("sp")
 
 
-# Figure 1 _____________________________________________________________________
+# Loading raw raster and shapefile. Might take a while.
+vk <- sf::st_read(
+  dsn = "./cityData/2014-cbs-vierkant-100m",
+  layer = "CBSvierkant100m201410"
+)
+shp <- sf::st_read(
+  dsn = "./cityData/shape 2014 versie 30/uitvoer_shape",
+  layer = "wijk_2014"
+)
+#shp <- subset(shp, shp$GM_NAAM == "Rotterdam")
+
+districtsList <- c(
+  "WK059901",
+  "WK059903",
+  "WK059904",
+  "WK059905",
+  "WK059906",
+  "WK059908",
+  "WK059910",
+  "WK059912",
+  "WK059913",
+  "WK059914",
+  "WK059915",
+  "WK059916"
+)
+districtsNames <- c(
+  "Stadscentrum",
+  "Delfshaven",
+  "Overschie",
+  "Noord",
+  "Hillegersberg-Schiebroek",
+  "Kralingen-Crooswijk",
+  "Feijenoord",
+  "IJsselmonde",
+  "Pernis",
+  "Prins Alexander",
+  "Charlois",
+  "Hoogvliet"
+)
+shp <- subset(shp, shp$WK_CODE %in% districtsList)
+for (w in 1:12) shp$district[w] <- districtsNames[w]
+rm(districtsList, districtsNames)
+
+
+# Removing unnecessary tiles:
+vk <- subset(
+  vk, 
+  vk$INW2014 != -99998 & vk$INW2014 != 0 & vk$P_NWAL2014 != "geheim"
+)
+
+# Fixing CRS
+vk <- sf::st_transform(x = vk, crs = sf::st_crs("+proj=longlat +datum=WGS84"))
+shp <- sf::st_transform(x = shp, crs = sf::st_crs("+proj=longlat +datum=WGS84"))
+
+# Joining:
+rast <- sf::st_intersection(
+  x = sf::st_as_sf(vk), 
+  y = shp#,
+  #sf::sf_use_s2(FALSE) # See https://github.com/r-spatial/sf/issues/1817
+)[,c(1, 2, 17, 58, 75, 259, 260)] # taking only relevant columns
+#pnwalrecode_var <- c(0.000000, 75.998914, 53.030019, 30.792600, 15.197071,  4.109998)
+
+
+# recoding variables
+rast$pnw <- c()
+for (i in 1:nrow(rast)) {
+  if (rast$P_NWAL2014[i] == "geen nw. allochtoon") rast$pnw[i] <- 0
+  if (rast$P_NWAL2014[i] == "minder dan 10%") rast$pnw[i] <- 1
+  if (rast$P_NWAL2014[i] == "10% tot 25%") rast$pnw[i] <- 2
+  if (rast$P_NWAL2014[i] == "25% tot 45%") rast$pnw[i] <- 3
+  if (rast$P_NWAL2014[i] == "45% tot 67%") rast$pnw[i] <- 4
+  if (rast$P_NWAL2014[i] == "67% of meer") rast$pnw[i] <- 5
+}
+#quantile(rast$INW2014, probs = seq(0.2, 0.8, 0.2))
+rast$pop <- findInterval(
+  x = rast$INW2014, 
+  vec = c(20, 40, 80, 120, 200)
+)
+table(rast$pop)
+
+shp$color <- c(4,2,2,3,1,2,1,4,1,3,3,4)
+#cbind(shp$district, shp$color)
+
+rast$pnw <- factor(
+  x = rast$pnw,
+  levels = 0:5,
+  labels = c(
+    "none",
+    "less than 10%",
+    "10% to 25%",
+    "25% to 45%",
+    "45% to 67%",
+    "67% or more"
+  ),
+  ordered = TRUE
+)
+rast$pop <- factor(
+  x = rast$pop,
+  levels = 0:5,
+  labels = c(
+    "fewer than 20",
+    "20 to 39",
+    "40 to 79",
+    "80 to 119",
+    "120 to 199",
+    "200 or more"
+  ),
+  ordered = TRUE
+)
+#table(rast$P_NWAL2014, rast$pnw) # ensuring we recoded correctly.
+
+#labels <- sf::st_centroid(shp)[,c(185, 186)]
+labels <- as.data.frame(sf::st_coordinates(sf::st_centroid(shp)))
+labels$district <- shp$district
+
+# Donwloading basemap and specifying a ggplot theme
+zoom = 11 # Higher values give more detailed basemaps. 12-15 usually suffice.
+coords <- as.data.frame(sf::st_coordinates(shp))
+mapTilesCol <- ggmap::get_stamenmap( # Map tiles by Stamen Design 2022
+  bbox = c(
+    left = min(coords$X),
+    bottom = min(coords$Y),
+    right = max(coords$X),
+    top = max(coords$Y)),
+  maptype = "terrain",#"terrain-background",#"toner-background",
+  crop = TRUE, zoom = zoom + 1
+)
+mapTilesBW <- ggmap::get_stamenmap( # Map tiles by Stamen Design 2022
+  bbox = c(
+    left = min(coords$X),
+    bottom = min(coords$Y),
+    right = max(coords$X),
+    top = max(coords$Y)),
+  maptype = "toner-background",
+  crop = TRUE, zoom = zoom
+)
+mapTheme <- ggplot2::theme(
+  legend.position = "right",
+  panel.border = element_blank(),
+  axis.title = element_blank(),
+  axis.ticks = element_blank(),
+  axis.text = element_blank()
+)
+
+
+# Plotting administrative district areas
+plotdistr <- ggmap(mapTilesCol, darken = c(0.3, "white")) +
+  ggtitle("District boundaries") +
+  geom_sf(
+    data = shp, 
+    aes(fill = as.factor(color)), 
+    color = NA,#"grey40",
+    size = 0.7,
+    alpha = 0.4,
+    inherit.aes = FALSE
+  ) +
+  geom_text(
+    data = labels,
+    aes(x = X, y = Y, label = as.character(district)),
+    position = position_jitter(height = 0.005, seed = 12345),
+    color = "black",
+    size = 3
+  ) +
+  scale_fill_viridis_d(option = "B", begin = 0.2) +
+  labs(fill = "") +
+  mapTheme + theme(legend.position = "NA")
+ 
+# Plotting population densities
+plotdens <- ggmap(mapTilesBW, darken = c(0.8, "white")) +
+  ggtitle("Population density") +
+  geom_sf(
+    data = rast, 
+    aes(fill = pop), 
+    color = NA, 
+    alpha = 0.8,
+    inherit.aes = FALSE
+  ) +
+  geom_sf(
+    data = shp, fill = NA, color = "black", size = 0.9, inherit.aes = FALSE) +
+  scale_fill_viridis_d(option = "B", end = 0.85) +
+  labs(fill = "") +
+  mapTheme
+
+# Plotting density of non-western
+plotnws <- ggmap(mapTilesBW, darken = c(0.8, "white")) +
+  ggtitle("Residents with a non-western migration background") +
+  geom_sf(
+    data = rast, aes(fill = pnw), color = NA, alpha = 0.8, inherit.aes = FALSE
+  ) +
+  geom_sf(
+    data = shp, fill = NA, color = "black", size = 0.9, inherit.aes = FALSE) +
+  scale_fill_viridis_d(option = "B", end = 0.85) +
+  labs(fill = "") +
+  mapTheme
+
+
+# Combining it all into one figure and saving to file:
+tiff(
+  filename = "./outputGraphics/figure 1 - map.tiff",
+  width = 1700, height = 3200, units = "px", res = 300
+)
+
+ggpubr::ggarrange(
+  plotdistr, plotdens, plotnws, 
+  ncol = 1, 
+  #hjust = -1,
+  align = "h",
+  labels = "AUTO"
+)
+#gridExtra::grid.arrange(plotdistr, plotdens, plotnws, ncol = 1)
+
+dev.off() 
+
+
+
+# Freeing up some memory:
+rm(
+  coords, labels, mapTiles, mapTheme, zoom,
+  plotdens, plotdistr, plotnws,
+  rast, shp, vk
+)
+gc()
+
+# Figure X3 ____________________________________________________________________
+
+
+d <- expand.grid(
+  opDiff = seq(from = 0, to = 2, by = 0.1),
+  grDiff = c(0,2),
+  H = c(0.5, 0.6, 0.75, 0.9, 1)
+)
+
+computeWeight <- function(opDiff, grDiff, H)
+  1 - (abs(opDiff) * H + abs(grDiff) * (1 - H)) / 1
+
+d$w <- computeWeight(d$opDiff, d$grDiff, d$H)
+
+d$facetLabel <- factor(
+  d$H,
+  levels = c(0.5, 0.6, 0.75, 0.9, 1),
+  labels = c(
+    "H = 0.5",
+    "H = 0.6",
+    "H = 0.75",
+    "H = 0.9",
+    "H = 1"
+  )
+)
+
+legendLabels <- c(
+  "paste(ingroup~contact, '  ', '\u007C', g[j] - g[i], '\u007C',' = ', 0)",
+  "paste(outgroup~contact, '  ', '\u007C', g[j] - g[i], '\u007C', ' = ', 2)"
+)
+
+tiff(
+  filename = "./outputGraphics/figure 5 - relationship H-w.tiff",
+  width = 2000, height = 1000, units = "px", res = 300
+)
+
+ggplot(data = d, aes(x = opDiff, y = w)) +
+  geom_rect(
+    aes(xmin = 0, xmax = 2, ymin = -Inf, ymax = 0), 
+    fill = "gray83", alpha = 0.1
+  ) +
+  geom_rect(
+    aes(xmin = 0, xmax = 2, ymin = -0, ymax = Inf), 
+    fill = "gray90", alpha = 0.1
+  ) +
+  #geom_segment(aes(x = 0, xend = 2, y = 0, yend = 0), color = "gray80") +
+  geom_line(
+    aes(linetype = as.factor(grDiff), color = as.factor(grDiff)),
+    size = 1
+  ) +
+  scale_color_viridis_d(
+    name = "", option = "B", begin = 0.35, end = 0.85,
+    labels = expression(
+      paste(ingroup~contact, '  ', '\u007C', g[j] - g[i], '\u007C',' = ', 0),
+      paste(outgroup~contact, '  ', '\u007C', g[j] - g[i], '\u007C', ' = ', 2)
+  )) +
+  scale_linetype_discrete(name = "", labels = expression(
+    paste(ingroup~contact, '  ', '\u007C', g[j] - g[i], '\u007C',' = ', 0),
+    paste(outgroup~contact, '  ', '\u007C', g[j] - g[i], '\u007C', ' = ', 2)
+  )) +
+  facet_wrap(~ facetLabel, nrow = 1) +
+  labs(
+    x = expression(paste("disagreement  ", "|", o[j] - o[i], "|")),
+    y = expression(w[ij])
+  ) +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  guides(color = guide_legend(nrow = 2), linetype = guide_legend(nrow = 2)) +
+  theme(
+    legend.position = "bottom",
+    panel.background =  element_blank(),
+    panel.border = element_blank(),
+    panel.spacing = unit(1.2, "lines"),
+    panel.grid.major = element_line(color = "gray50"),
+    panel.grid.minor = element_line(color = "gray50"),
+    axis.line.x = element_line(color = "#808080"),
+    axis.line.y = element_line(color = "#808080"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.background = element_blank(),
+    legend.key = element_blank()
+  )
+
+dev.off()
+
+
+rm(d)
+
+
+
+
+
+# Figure 2 _____________________________________________________________________
 # Example districts with higher peaks of outgroup exposure vs higher average
 # outgroup exposure.
 #
@@ -96,7 +420,7 @@ d$col <- as.factor(d$col)
 
 
 tiff(
-  filename = "./outputGraphics/figure 1 - outgroup exposure example.tiff",
+  filename = "./outputGraphics/figure 2 - outgroup exposure example.tiff",
   width = 1000, height = 500, res = 300, units = "px"
 )
 ggplot (d, aes(x = x, y = y, fill = col)) +
@@ -122,7 +446,7 @@ dev.off()
 rm(d, d1, d2)
 
 
-# Figure 2 _____________________________________________________________________
+# Figure 3 _____________________________________________________________________
 # Initial opinion distributions.
 #
 #d1 <- data.frame(
@@ -181,7 +505,7 @@ labs <- data.frame(
 )
 
 tiff(
-  filename = "./outputGraphics/figure 2 - initial opinion distributions.tiff",
+  filename = "./outputGraphics/figure 3 - initial opinion distributions.tiff",
   width = 1200, height = 700, res = 300, units = "px"
 )
 ggplot(data = d, aes(x = o, y = y)) +
@@ -209,7 +533,7 @@ rm(d, d2, d3, d4, panelLabels, labs)
 
 
 
-# Figure 3 _____________________________________________________________________
+# Figure 4 _____________________________________________________________________
 # Plotting distance decay functions.
 #
 ddf <- function(distances = 1:50000/10, s) {return(exp( - distances / s))}
@@ -229,7 +553,7 @@ labs <- data.frame(
 )
 
 tiff(
-  filename = "./outputGraphics/figure 3 - distance decay.tiff",
+  filename = "./outputGraphics/figure 4 - distance decay.tiff",
   width = 1000, height = 850, res = 300, units = "px"
 )
 ggplot(data = d) +
@@ -378,7 +702,7 @@ rri <- subset( # Agent-level information
 
 
 
-# Figure 4 _____________________________________________________________________
+# Figure 6 _____________________________________________________________________
 # Expectation 1a)
 # Agents who are more exposed to outgroup agents develop extreme attitudes after
 # fewer interactions.
@@ -386,7 +710,7 @@ rri <- subset( # Agent-level information
 # We filter out agents who never developed extreme attitudes:
 rri2 <- rri[!is.na(rri$timeFirstExtr),]
 tiff(
-  filename = "./outputGraphics/figure 4 - expectation_1a.tiff",
+  filename = "./outputGraphics/figure 6 - expectation_1a.tiff",
   width = 1900, height = 1400, res = 300, units = "px"
 )
 ggplot(
@@ -415,7 +739,7 @@ ggplot(
 dev.off()
 rm(rri2)
 
-# Figure 5 _____________________________________________________________________
+# Figure 7 _____________________________________________________________________
 # Expectation 1b)
 # Districts with higher levels of mean outgroup exposure exhibit a higher degree
 # of polarization at any given point of time (i.e. measured as the average
@@ -448,7 +772,7 @@ for (i in 1:length(labs_prep)){
 }
 
 tiff(
-  filename = "./outputGraphics/figure 5 - expectation_1b.tiff",
+  filename = "./outputGraphics/figure 7 - expectation_1b.tiff",
   width = 1300, height = 1200, res = 300, units = "px"
 )
 
@@ -493,7 +817,7 @@ dev.off()
 
 
 
-# Figure 6 _____________________________________________________________________
+# Figure 8 _____________________________________________________________________
 # Showing non-relevant runs from the baseline:
 #tiff(
 #  filename = "./outputGraphics/figure X - polarized runs.tiff",
@@ -531,7 +855,7 @@ dev.off()
 #rri <- subset(rri, rri$seed %in% rr$seed)
 
 
-# Figure 6______________________________________________________________________
+# Figure 8______________________________________________________________________
 # Map
 #
 library(ggmap)
@@ -583,7 +907,7 @@ myMap <- get_stamenmap(
 )
 
 tiff(
-  filename = "./outputGraphics/figure 6 - map.tiff",
+  filename = "./outputGraphics/figure 8 - map.tiff",
   width = 1700, height = 1150, units = "px", res = 300
 )
 
@@ -622,7 +946,7 @@ dev.off()
 
 
 
-# Figure 7 _____________________________________________________________________
+# Figure 9 _____________________________________________________________________
 # Expectation 2a)
 # Agents who are more exposed to their outgroup exhibit higher scores of local
 # alignment.
@@ -643,7 +967,7 @@ rri2 <- rri[rri$wijk %in% c(1, 4, 7),]
 #)
 
 tiff(
-  filename = "./outputGraphics/figure 7 - expectation_2a.tiff",
+  filename = "./outputGraphics/figure 9 - expectation_2a.tiff",
   width = 1200, height = 1200, res = 300, units = "px"
 )
 ggplot(
@@ -692,9 +1016,9 @@ ggplot(
 dev.off()
 rm(rri2)
 
-# Then we save a plot for the appendix (Figure 16) that contains all districts:
+# Then we save a plot for the appendix (Figure 19) that contains all districts:
 tiff(
-  filename = "./outputGraphics/figure 16 - expectation_2a.tiff",
+  filename = "./outputGraphics/figure 19 - expectation_2a.tiff",
   width = 1200, height = 3000, res = 300, units = "px"
 )
 ggplot(
@@ -742,7 +1066,7 @@ dev.off()
 
 
 
-# Figure 8 _____________________________________________________________________
+# Figure 10 _____________________________________________________________________
 # Expectation 2b) 
 # Districts with higher levels of mean outgroup exposure exhibit higher average
 # local alignment.
@@ -776,7 +1100,7 @@ for (i in 1:length(labs_prep)){
 }
 
 tiff(
-  filename = "./outputGraphics/figure 8 - expectation_2b.tiff",
+  filename = "./outputGraphics/figure 10 - expectation_2b.tiff",
   width = 1300, height = 1200, res = 300, units = "px"
 )
 
@@ -815,7 +1139,7 @@ dev.off()
 
 
 
-# Figure 9 _____________________________________________________________________
+# Figure 11 _____________________________________________________________________
 # Expectation 2c) 
 # There is an inverted U-shaped effect of average outgroup exposure
 # in the district and the difference between the average attitude of
@@ -877,7 +1201,7 @@ cut_to = 1.66
 breaks = 0:20/10
 
 tiff(
-  filename = "./outputGraphics/figure 9 - expectation_2c.tiff",
+  filename = "./outputGraphics/figure 11 - expectation_2c.tiff",
   width = 1300, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
@@ -1001,7 +1325,7 @@ ggplot(
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
 tiff(
-  filename = "./outputGraphics/figure 10.tiff",
+  filename = "./outputGraphics/figure 12.tiff",
   width = 1600, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
@@ -1155,7 +1479,7 @@ ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
 tiff(
-  filename = "./outputGraphics/figure 11.tiff",
+  filename = "./outputGraphics/figure 13.tiff",
   width = 1600, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
@@ -1190,6 +1514,118 @@ ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
     axis.line = element_line(colour = "black")
   )
 dev.off()
+
+
+# Exploring intermediate values of H with extra simulation runs:
+load("./simOutput/sims_exploring_H_2.RData")
+rh <- simResults
+rm(simResults)
+
+
+
+ap <- ggplot(rh, aes(factor(H), sqrt(varOpinionGlobal))) +
+  geom_segment( # max polarization for Overschie:
+    data = data.frame(
+      wijk = "3", x = 0, xend = 8,
+      y = citySummary$maxSDopinions[3], yend = citySummary$maxSDopinions[3]
+    ),
+    aes(x = x,y = y,yend = yend,xend = xend),
+    inherit.aes = FALSE, color = "black"
+  ) +
+  geom_segment( # max polarization for Pernis:
+    data = data.frame(
+      wijk = "9", x = 0, xend = 8,
+      y = citySummary$maxSDopinions[9], yend = citySummary$maxSDopinions[9]
+    ),
+    aes(x = x,y = y,yend = yend,xend = xend),
+    inherit.aes = FALSE, color = "black"
+  ) +
+  geom_violin( # polarization at t=0
+    aes(y = opSDt0),
+    fill = "white", color = "#ababab",
+    scale = "width",
+    draw_quantiles = 0.5
+  ) +
+  geom_point(position = position_jitter(width = 0.05), size = 1, shape = 1) +
+  geom_violin( # Final polarization
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) + 
+  facet_grid(
+    rows = ~as.factor(wijk),
+    labeller = as_labeller(c(
+      "3" = "district: Overschie", "9" = "district: Pernis"
+    ))
+  ) +
+  scale_x_discrete() +
+  scale_y_continuous(limits = c(0, 1), expand = c(0,0), breaks = seq(0,1,0.2)) +
+  #ggtitle("\ndistrict: Overschie\n") +
+  ylab("attitude polarization") +
+  xlab("") +
+  theme(
+    plot.margin = unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust = -2),
+    axis.text.x = element_blank(),#element_text(angle = 45, hjust = 1),
+    axis.ticks.x = element_blank(),
+    #axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+
+adbg <- ggplot(rh, aes(factor(H), abs(meanOpinionG1 - meanOpinionG2))) +
+#adbg <- ggplot(rh, aes(H, abs(meanOpinionG1 - meanOpinionG2))) +
+  geom_segment( # max attitude difference between groups:
+    aes(x = 0, xend = 8, y = 2, yend = 2), color = "black"
+  ) +
+  geom_violin( # attitude difference at t=0
+    aes(y = opDiffBetwGroupst0),
+    fill = "white", color = "#ababab",
+    scale = "width",
+    draw_quantiles = 0.5
+  ) +
+  geom_point(position = position_jitter(width = 0.05), size = 1, shape = 1) +
+  geom_violin( # Final polarization
+    color = "darkorange", fill = "darkorange", alpha = 0.4,#fill="gray",
+    scale = "width", width = 0.6,
+    draw_quantiles = 0.5
+  ) + 
+  facet_grid(
+    rows = ~as.factor(wijk),
+    labeller = as_labeller(c(
+      #"3" = "district: Overschie", "9" = "district: Pernis"
+      "3" = "", "9" = ""
+    ))
+  ) +
+  scale_x_discrete() +
+  scale_y_continuous(limits = c(0, 2.05), expand = c(0,0)) +
+  #scale_y_continuous(expand = c(0,0.02), limits = c(-0.3,2)) +
+  #ggtitle("\n \n ") +
+  ylab("attitude difference between groups") +
+  xlab("H") +
+  theme(
+    plot.margin=unit(c(0,0,0,40),"pt"),
+    plot.title = element_text(hjust=0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    strip.background = element_rect(fill = "white")
+  )
+
+tiff(
+  filename = "./outputGraphics/figure 14.tiff",
+  width = 1600, height = 1500, res = 300, units = "px"
+)
+grid.arrange(ap, adbg, nrow = 2)
+dev.off()
+
+
+
+
 
 
 
@@ -1273,7 +1709,7 @@ ggplot(
 #  width = 1300, height = 1200, res = 300, units = "px"
 #)
 tiff(
-  filename = "./outputGraphics/figure 12.tiff",
+  filename = "./outputGraphics/figure 15.tiff",
   width = 1600, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
@@ -1415,7 +1851,7 @@ ggplot(rr2, aes(factor(expOutgr2), opAlignment2)) +
 # in the district and the difference between the average attitude of
 # the two groups (global level alignment).
 tiff(
-  filename = "./outputGraphics/figure 13.tiff",
+  filename = "./outputGraphics/figure 16.tiff",
   width = 1600, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +
@@ -1539,7 +1975,7 @@ ggplot(
 # of polarization at any given point of time (i.e. measured as the average
 # number of interaction events per agent).
 tiff(
-  filename = "./outputGraphics/figure 14.tiff",
+  filename = "./outputGraphics/figure 17.tiff",
   width = 2200, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), SDopinions)) +
@@ -1678,7 +2114,7 @@ ggplot(rr, aes(factor(expOutgr2), opAlignment2)) +
 # in the district and the difference between the average attitude of
 # the two groups (global level alignment).
 tiff(
-  filename = "./outputGraphics/figure 15.tiff",
+  filename = "./outputGraphics/figure 18.tiff",
   width = 2200, height = 1200, res = 300, units = "px"
 )
 ggplot(rr, aes(factor(expOutgr2), abs(intuitiveAlignment))) +

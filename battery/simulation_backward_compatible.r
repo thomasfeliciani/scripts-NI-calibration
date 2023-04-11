@@ -368,6 +368,11 @@ worldImport <- function(){
     # We scale the opinion to the correct range
     agents$opinion <<- agents$opinion * 2 - 1
   }
+  
+  opDiffBetwGroupst0 <<- 
+    abs(mean(agents$opinion[G1]) - mean(agents$opinion[G2]))
+  opSDt0 <<- sd(agents$opinion)
+  
   if (printOpinionHistogram == TRUE) {histOpinion()}
   agents$timeFirstExtr <<- agents$nIntFirstExtr <<- NA
   agents$durationPol <<- 0
@@ -671,7 +676,9 @@ createoutput <- function (...){
     #opClusteringA3,
     opAlignment1,
     opAlignment2,
-    opAlignment3
+    opAlignment3,
+    opDiffBetwGroupst0,
+    opSDt0
   ))
   return(out)
 }
