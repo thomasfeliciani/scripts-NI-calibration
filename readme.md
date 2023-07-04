@@ -1,7 +1,12 @@
-_Latest edits: 15 November 2021._
+_Latest update: 4 July 2023._
+
 
 # Calibrated repulsive influence model
-This repository concerns an agent-based model (ABM) of opinion dynamics. It runs an empirically calibrated, spatially explicit version of the repulsive influence model (aka “negative influence” model- or simply _RI-_ or _NI-_ model). The ABM and this repository are used in a research paper currently in preparation.
+This repository consists in the replication scripts for the following article:
+
+* Feliciani, T., Tolsma, J. & Flache, A. (2023). Ethnic segregation and spatial patterns of attitudes: studying the link using register data and social simulation. _Journal of Computational Social Science_. [https://doi.org/10.1007/s42001-023-00216-9](https://doi.org/10.1007/s42001-023-00216-9) 
+
+The scripts run an empirically-seeded, spatially-explicit agent-based model (ABM) of opinion dynamics called "repulsive influence model" (aka “negative influence” model- or simply _RI-_ or _NI-_ model).
 
 This code runs in [R 4.2.0](https://www.r-project.org/) (R Core Team, 2022).
 
